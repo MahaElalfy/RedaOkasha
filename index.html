@@ -484,17 +484,42 @@ function App(){
     setErr("");setLoading(true);setPlan(null);
     const labLines=LABS.filter(function(f){return labs[f.k];}).map(function(f){return "  "+f.en+": "+labs[f.k]+" (Ref: "+f.ref+")";}).join("\n");
     const mealSlots=freqObj.meals.join(", ");
-    const prompt="You are a clinical dietitian. Generate a 7-day nutrition plan following ASPEN and ESPEN guidelines.\n\nPATIENT: "+name+" | DOB: "+dob+" | Age: "+age+" | Gender: "+gender+"\nWeight: "+wt+"kg | Height: "+ht+"cm | BMI: "+BMI+" | Activity: "+activity+"\n\nLABS:\n"+(labLines||"None")+"\n\nCOMORBIDITIES: "+(morbs.join(", ")||"None")+"\nMEDICATIONS: "+(meds||"None")+"\nALLERGIES: "+(allergies||"None")+"\n\nCASE: "+(caseObj?caseObj.en:caseType)+"\nDIET: "+(dietObj?dietObj.en:dietType)+" — "+(dietObj?dietObj.macros:"")+"\nMEALS/DAY: "+freqObj.en+" ("+mealSlots+")\nCALORIES: "+finalCals+" kcal/day\n\nNOTES: "+(notes||"None")+"\n\nReturn ONLY valid JSON, no markdown:\n{\n  \"summary\":{\"calories\":\""+finalCals+" kcal/day\",\"protein\":\"Xg\",\"carbs\":\"Xg\",\"fat\":\"Xg\",\"fiber\":\"Xg\",\"fluid\":\"XL\",\"rationale\":\"2 sentences citing ASPEN/ESPEN\"},\n  \"flags\":[\"clinical warning\"],\n  \"supplements\":[{\"name\":\"x\",\"dose\":\"x\",\"reason\":\"x\"}],\n  \"keyPrinciples\":[\"p1\",\"p2\",\"p3\",\"p4\",\"p5\"],\n  \"days\":[\n    {\"day\":\"Monday\",\"meals\":{"+freqObj.meals.map(function(m){return "\""+m+"\":{\"name\":\"...\",\"items\":[\"item with portion\"],\"calories\":000,\"notes\":\"tip\"}";}).join(",")+" },\"total\":0}\n  ],\n  \"lifestyle\":[\"advice\"],\n  \"followUp\":\"recommendation\"\n}\nAll 7 days. Egyptian/Middle Eastern food. Specific portions. No markdown.";
+    const prompt="You are a clinical dietitian. Generate a 7-day nutrition plan following ASPEN and ESPEN guidelines.\n\nPATIENT: "+name+" | DOB: "+dob+" | Age: "+age+" | Gender: "+gender+"\nWeight: "+wt+"kg | Height: "+ht+"cm | BMI: "+BMI+" | Activity: "+activity+"\n\nLABS:\n"+(labLines||"None")+"\n\nCOMORBIDITIES: "+(morbs.join(", ")||"None")+"\nMEDICATIONS: "+(meds||"None")+"\nALLERGIES: "+(allergies||"None")+"\n\nCASE: "+(caseObj?caseObj.en:caseType)+"\nDIET: "+(dietObj?dietObj.en:dietType)+" — "+(dietObj?dietObj.macros:"")+"\nMEALS/DAY: "+freqObj.en+" ("+mealSlots+")\nCALORIES: "+finalCals+" kcal/day\n\nNOTES: "+(notes||"None")+"\n\nReturn ONLY valid JSON, no markdown:\n{\n  \"summary\":{\"calories\":\""+finalCals+" kcal/day\",\"protein\":\"Xg\",\"carbs\":\"Xg\",\"fat\":\"Xg\",\"fiber\":\"Xg\",\"fluid\":\"XL\",\"rationale\":\"2 sentences citing ASPEN/ESPEN\"},\n  \"flags\":[\"clinical warning\"],\n  \"supplements\":[{\"name\":\"x\",\"dose\":\"x\",\"reason\":\"x\"}],\n  \"keyPrinciples\":[\"p1\",\"p2\",\"p3\",\"p4\",\"p5\"],\n  \"days\":[\n    {\"day\":\"Monday\",\"meals\":{"+freqObj.meals.map(function(m){return "\""+m+"\":{\"name\":\"...\",\"items\":[\"item with portion\"],\"calories\":000,\"notes\":\"tip\"}";}).join(",")+" },\"total\":0}\n  ],\n  \"lifestyle\":[\"advice\"],\n  \"followUp\":\"recommendation\"\n}\nAll 7 days REQUIRED. Egyptian/Middle Eastern food. Keep item descriptions concise (e.g. \"Ful medames 150g\", \"Whole wheat bread 2 slices\"). Limit each meal to 2-3 items. Valid complete JSON only. No markdown.";
 
     try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{
         method:"POST",
         headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:5000,messages:[{role:"user",content:prompt}]})
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:8000,messages:[{role:"user",content:prompt}]})
       });
       const data=await res.json();
+      if(data.error){throw new Error(data.error.message||JSON.stringify(data.error));}
       const text=(data.content&&data.content[0]&&data.content[0].text)||"";
-      const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
+      if(!text){throw new Error("Empty response from API. Check your API key and billing credit at console.anthropic.com");}
+      let cleaned=text.replace(/```json|```/g,"").trim();
+      let parsed;
+      try{
+        parsed=JSON.parse(cleaned);
+      }catch(parseErr){
+        // Response was truncated - try to repair by closing open structures
+        let repaired=cleaned;
+        // Remove any trailing incomplete content after last complete day
+        const lastBrace=repaired.lastIndexOf("}");
+        // Count unclosed brackets and try to close them
+        const openCurly=(repaired.match(/{/g)||[]).length;
+        const closeCurly=(repaired.match(/}/g)||[]).length;
+        const openSquare=(repaired.match(/\[/g)||[]).length;
+        const closeSquare=(repaired.match(/]/g)||[]).length;
+        // Trim to last complete object then close everything
+        if(lastBrace>0){repaired=repaired.slice(0,lastBrace+1);}
+        for(let i=0;i<(openSquare-closeSquare);i++)repaired+="]";
+        for(let i=0;i<(openCurly-closeCurly);i++)repaired+="}";
+        try{
+          parsed=JSON.parse(repaired);
+        }catch(e2){
+          throw new Error("The plan response was too long and got cut off. Please try again, or reduce to '3 Meals + 1 Snack' for a shorter plan.");
+        }
+      }
       parsed._date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
       parsed._patient={name,dob,bmi:BMI,gender,caseLabel:caseObj?caseObj[lang]||caseObj.en:"",dietLabel:dietObj?dietObj[lang]||dietObj.en:""};
       setPlan(parsed);setStep(4);
