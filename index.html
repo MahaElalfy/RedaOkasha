@@ -4,1494 +4,542 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NutriPlan AI — Dr. Reda Okasha</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🥗</text></svg>"/>
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/recharts@2.8.0/umd/Recharts.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f4f9f8; }
-    input, select, textarea, button { font-family: inherit; }
-    @media print {
-      .no-print { display: none !important; }
-      body { margin: 0; background: white; }
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#f4f9f8;}
+    input,select,textarea,button{font-family:inherit;}
+    @media print{.no-print{display:none!important;}body{margin:0;background:white;}}
+    ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-thumb{background:#2A8F8F;border-radius:3px;}
   </style>
 </head>
 <body>
-  <div id="root"></div>
-  <script type="text/babel" data-presets="react">
-const { useState, useRef } = React;
-const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ReferenceLine } = Recharts;
-
+  <div id="root"><div style="padding:30px;font-family:sans-serif;color:#1B6B6B">⏳ Loading…</div></div>
+  <script>
+const { useState } = React;
 
 const C = {
-  teal:"#1B6B6B", tealMid:"#2A8F8F", tealLt:"#E4F4F4",
-  sage:"#4A9B7F", sageLt:"#EAF5F0",
-  amber:"#E8A23A", amberLt:"#FEF6E7",
-  slate:"#3D4F5C", ink:"#1C2B33",
-  mist:"#F4F9F8", white:"#FFFFFF", border:"#D6E8E5",
-  red:"#C0392B", redLt:"#FDECEA",
-  purple:"#7B6ED6", purpleLt:"#F0EEF9",
-  blue:"#2980B9", blueLt:"#EBF4FB",
-  orange:"#E67E22", orangeLt:"#FEF3E7",
-  pink:"#E91E8C",
+  teal:"#1B6B6B",tealMid:"#2A8F8F",tealLt:"#E4F4F4",
+  sage:"#4A9B7F",sageLt:"#EAF5F0",
+  amber:"#E8A23A",amberLt:"#FEF6E7",
+  slate:"#3D4F5C",ink:"#1C2B33",
+  mist:"#F4F9F8",white:"#FFFFFF",border:"#D6E8E5",
+  red:"#C0392B",redLt:"#FDECEA",
+  purple:"#7B6ED6",blue:"#2980B9",orange:"#E67E22",
 };
 
-// ── WHO BMI-for-age centile reference data (WHO 2007) ──────────────
-const WHO_CENTILES = {
-  boys:{
-    ages:[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
-    p3: [13.9,13.4,13.1,12.9,12.9,13.0,13.2,13.5,13.9,14.4,14.9,15.5,16.0,16.5,17.0,17.4,17.7],
-    p15:[14.7,14.2,13.9,13.7,13.7,13.9,14.1,14.5,15.0,15.6,16.2,16.8,17.4,17.9,18.4,18.8,19.1],
-    p50:[16.0,15.5,15.1,14.9,14.9,15.0,15.3,15.7,16.2,16.8,17.5,18.2,18.9,19.5,20.0,20.4,20.8],
-    p85:[17.3,16.7,16.3,16.1,16.1,16.4,16.8,17.4,18.1,18.9,19.7,20.5,21.3,22.0,22.6,23.1,23.4],
-    p97:[18.3,17.7,17.3,17.2,17.2,17.6,18.2,18.9,19.8,20.8,21.8,22.8,23.8,24.6,25.3,25.8,26.1],
-  },
-  girls:{
-    ages:[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18],
-    p3: [13.6,13.1,12.9,12.7,12.7,12.8,13.1,13.4,13.8,14.3,14.8,15.4,16.0,16.5,16.9,17.2,17.4],
-    p15:[14.4,13.9,13.6,13.4,13.4,13.6,13.9,14.3,14.8,15.5,16.2,16.9,17.5,18.0,18.4,18.7,18.9],
-    p50:[15.7,15.3,14.9,14.8,14.7,14.9,15.2,15.7,16.2,17.0,17.7,18.4,19.1,19.6,20.1,20.4,20.6],
-    p85:[17.0,16.5,16.2,16.1,16.2,16.5,17.0,17.7,18.5,19.5,20.4,21.3,22.1,22.7,23.2,23.5,23.6],
-    p97:[18.0,17.5,17.2,17.2,17.3,17.8,18.5,19.4,20.4,21.6,22.8,23.9,24.9,25.6,26.1,26.4,26.4],
-  }
-};
-
-// ── Schofield REE equations (WHO/FAO 1985, ESPEN Paediatric GL) ────
-function calcREE(wt, ht, age, gender) {
-  const w=parseFloat(wt), h=parseFloat(ht), a=parseFloat(age)||30;
-  if(!w||!h) return 0;
-  const isFemale = gender==="Female"||gender==="أنثى";
-  if(a < 18) {
-    // Schofield height+weight equations (kcal/day)
-    if(isFemale){
-      if(a<3)  return 16.252*w + 10.232*(h/100)*100 - 413.5;
-      if(a<10) return 16.969*w + 1.618*h + 371.2;
-      return 8.365*w + 4.65*h + 200.0;
-    } else {
-      if(a<3)  return 0.167*w + 15.174*h - 617.6;
-      if(a<10) return 19.59*w + 1.303*h + 414.9;
-      return 16.25*w + 1.372*h + 515.5;
-    }
-  }
-  // Mifflin-St Jeor (adults)
-  return isFemale ? 10*w+6.25*h-5*a-161 : 10*w+6.25*h-5*a+5;
-}
-
-const ACTIVITY_MULT={sedentary:1.2,light:1.375,moderate:1.55,very_active:1.725,extra_active:1.9};
-function calcTDEE(ree,act){return Math.round(ree*(ACTIVITY_MULT[act]||1.2));}
-
-const CASE_CALORIE_ADJ={
-  obesity_adult:    {adj:-600, note:{en:"−600 kcal deficit → 0.5 kg/week loss (ESPEN)",ar:"عجز 600 سعرة → 0.5 كغ/أسبوع (ESPEN)"}},
-  diabetes:         {adj:-250, note:{en:"Moderate deficit if overweight; glycaemia-matched",ar:"عجز معتدل إذا كان الوزن زائداً"}},
-  hypertension:     {adj:0,    note:{en:"Maintain weight; DASH targets Na <1500 mg/day",ar:"حافظ على الوزن؛ تستهدف DASH أقل من 1500 ملغ صوديوم"}},
-  osteoarthritis:   {adj:-300, note:{en:"−300 kcal to reduce joint load (EULAR 2023)",ar:"عجز 300 سعرة لتخفيف ضغط المفاصل (EULAR 2023)"}},
-  underweight_adult:{adj:+500, note:{en:"+500 kcal surplus → 0.5 kg/week gain (ESPEN)",ar:"فائض 500 سعرة → 0.5 كغ/أسبوع"}},
-  underweight_child:{adj:+300, note:{en:"+300–500 kcal for catch-up growth (WHO)",ar:"فائض 300–500 سعرة لتعويض النمو (WHO)"}},
-  post_bariatric:   {adj:0,    note:{en:"Phase-specific targets — see Bariatric Phase card",ar:"أهداف حسب المرحلة — انظر بطاقة المرحلة"}},
-  cp_autism_adhd:   {adj:-100, note:{en:"−10–15% for reduced mobility (ESPGHAN)",ar:"تخفيض 10–15% لانخفاض الحركة (ESPGHAN)"}},
-};
-
-function suggestCalories(wt,ht,age,gender,activity,caseType,bariatricWeeks){
-  if(caseType==="post_bariatric"){
-    const w=parseInt(bariatricWeeks)||0;
-    const cals=w<=2?350:w<=4?500:w<=8?700:w<=12?900:1100;
-    return {value:cals,tdee:cals,note:CASE_CALORIE_ADJ.post_bariatric.note,formula:"Phase-based (ASMBS)"};
-  }
-  const ree=calcREE(wt,ht,age,gender);
-  if(!ree) return {value:0,tdee:0,note:{en:"",ar:""},formula:""};
-  const tdee=calcTDEE(ree,activity);
-  const adj=CASE_CALORIE_ADJ[caseType];
-  const value=adj?Math.max(1200,tdee+adj.adj):tdee;
-  const formula=parseFloat(age)<18?"Schofield (Paediatric, WHO/FAO 1985)":"Mifflin-St Jeor";
-  return{value,tdee,note:adj?.note||{en:"",ar:""},formula};
-}
-
-// ── Post-bariatric phases ──────────────────────────────────────────
-function getBariatricPhase(weeks){
-  const w=parseInt(weeks)||0;
-  if(w<=2)  return{en:"Phase 1 – Clear Liquids (300–400 kcal)",ar:"المرحلة 1 – سوائل صافية",cals:350};
-  if(w<=4)  return{en:"Phase 2 – Full Liquids (400–600 kcal)",ar:"المرحلة 2 – سوائل كاملة",cals:500};
-  if(w<=8)  return{en:"Phase 3 – Purée / Soft Foods (600–800 kcal)",ar:"المرحلة 3 – مهروس",cals:700};
-  if(w<=12) return{en:"Phase 4 – Soft Solid Foods (800–1000 kcal)",ar:"المرحلة 4 – طري",cals:900};
-  return    {en:"Phase 5 – Regular Foods (1000–1200 kcal)",ar:"المرحلة 5 – طعام طبيعي",cals:1100};
-}
-
-// ── Paediatric WHO z-score ─────────────────────────────────────────
-const WHO_BMI_MEDIAN={
-  2:{m:16.0,f:15.7},3:{m:15.5,f:15.3},4:{m:15.1,f:15.0},
-  5:{m:14.9,f:14.8},6:{m:15.1,f:15.1},7:{m:15.5,f:15.5},
-  8:{m:16.0,f:16.1},9:{m:16.5,f:16.7},10:{m:17.1,f:17.4},
-  11:{m:17.7,f:18.0},12:{m:18.2,f:18.6},13:{m:18.7,f:19.1},
-  14:{m:19.3,f:19.7},15:{m:19.8,f:20.2},16:{m:20.4,f:20.6},
-  17:{m:20.9,f:21.0},18:{m:21.4,f:21.3},
-};
-const WHO_BMI_SD={2:1.5,3:1.4,4:1.3,5:1.2,6:1.3,7:1.4,8:1.6,9:1.8,10:2.0,11:2.2,12:2.4,13:2.6,14:2.7,15:2.8,16:2.9,17:3.0,18:3.1};
-function calcPedZScore(bmi,age,gender){
-  const a=Math.round(parseFloat(age));
-  if(!WHO_BMI_MEDIAN[a]||!bmi) return null;
-  const g=(gender==="Female"||gender==="أنثى")?"f":"m";
-  const median=WHO_BMI_MEDIAN[a][g], sd=WHO_BMI_SD[a]||2.0;
-  const z=((parseFloat(bmi)-median)/sd).toFixed(2);
-  let cat;
-  if(z<-3)     cat={en:"Severely Wasted",ar:"هزال شديد",color:C.red};
-  else if(z<-2)cat={en:"Underweight",ar:"نقص وزن",color:"#E67E22"};
-  else if(z<1) cat={en:"Normal",ar:"طبيعي",color:C.sage};
-  else if(z<2) cat={en:"Overweight Risk",ar:"خطر زيادة وزن",color:C.amber};
-  else         cat={en:"Obese",ar:"سمنة",color:C.red};
-  return{z,cat,median,sd};
-}
-
-// ── Growth chart data builder ──────────────────────────────────────
-function buildGrowthChartData(gender,patientAge,patientBMI){
-  const g=(gender==="Female"||gender==="أنثى")?"girls":"boys";
-  const ref=WHO_CENTILES[g];
-  return ref.ages.map((age,i)=>({
-    age,
-    P3:ref.p3[i], P15:ref.p15[i], P50:ref.p50[i],
-    P85:ref.p85[i], P97:ref.p97[i],
-    ...(Math.round(parseFloat(patientAge))===age?{Patient:parseFloat(patientBMI)}:{}),
-  }));
-}
-
-// ── Drug interactions ──────────────────────────────────────────────
-const DRUG_INTERACTIONS=[
-  {kw:["metformin","glucophage"],flags:[{en:"Metformin → Annual B12 monitoring; consider supplement (ESPEN 2023)",ar:"ميتفورمين → فحص ب12 سنوياً، فكر في مكملات"}]},
-  {kw:["warfarin","coumadin","sintrom"],flags:[{en:"Warfarin → Consistent daily Vitamin K intake essential; avoid sudden changes in leafy greens",ar:"الوارفارين → ثبّت كمية فيتامين ك اليومية من الخضروات الورقية"}]},
-  {kw:["statin","atorvastatin","rosuvastatin","simvastatin","lipitor","crestor"],flags:[{en:"Statins → Avoid grapefruit/pomelo (CYP3A4 inhibition); monitor CoQ10",ar:"الستاتينات → تجنب الجريب فروت؛ راقب CoQ10"}]},
-  {kw:["omeprazole","pantoprazole","esomeprazole","ppi","nexium","losec","rabeprazole"],flags:[{en:"PPI → Reduced B12, Iron, Calcium, Magnesium absorption; supplement after long-term use",ar:"PPI → تقليل امتصاص ب12، حديد، كالسيوم، ماغنسيوم"}]},
-  {kw:["furosemide","lasix","hydrochlorothiazide","diuretic","spironolactone","torsemide"],flags:[{en:"Diuretics → Monitor Potassium & Magnesium; increase dietary sources (banana, avocado, spinach)",ar:"مدرات البول → راقب البوتاسيوم والماغنسيوم"}]},
-  {kw:["levothyroxine","synthroid","thyroxine","eltroxin","euthyrox"],flags:[{en:"Levothyroxine → Empty stomach only; separate Calcium & Iron by ≥4 hrs; limit soy at dose time",ar:"ليفوثيروكسين → على معدة فارغة؛ افصل الكالسيوم والحديد 4 ساعات"}]},
-  {kw:["enalapril","lisinopril","ramipril","captopril","ace inhibitor","perindopril"],flags:[{en:"ACE Inhibitors → Risk of hyperkalaemia; avoid high-potassium supplements",ar:"مثبطات ACE → خطر ارتفاع البوتاسيوم؛ تجنب مكملاته"}]},
-  {kw:["prednisolone","prednisone","dexamethasone","cortisone","corticosteroid","methylprednisolone"],flags:[{en:"Corticosteroids → Increase Ca + Vitamin D intake; monitor glucose, sodium, weight",ar:"الكورتيكوستيرويدات → زد الكالسيوم وفيتامين د؛ راقب السكر والصوديوم"}]},
-  {kw:["ferrous","iron supplement","fesolate","ferric"],flags:[{en:"Iron → Take with Vitamin C; separate from Calcium, tea, coffee by ≥2 hrs",ar:"الحديد → تناوله مع فيتامين ج؛ افصل عن الكالسيوم والشاي ساعتين"}]},
-  {kw:["methotrexate"],flags:[{en:"Methotrexate → Folate supplementation essential; avoid alcohol and high-fat meals",ar:"الميثوتريكسات → ضروري تناول الفولات؛ تجنب الكحول والدهون العالية"}]},
+const CASES = [
+  {v:"obesity_adult",   en:"Obesity – Adults",           ar:"السمنة – البالغون"},
+  {v:"diabetes",        en:"Diabetes (T1/T2/GDM)",        ar:"السكري"},
+  {v:"hypertension",    en:"Hypertension",                ar:"ارتفاع ضغط الدم"},
+  {v:"osteoarthritis",  en:"Osteoarthritis",              ar:"التهاب المفاصل"},
+  {v:"underweight_adult",en:"Underweight – Adults",       ar:"نقص الوزن – بالغون"},
+  {v:"underweight_child",en:"Underweight – Children",     ar:"نقص الوزن – أطفال"},
+  {v:"post_bariatric",  en:"Post-Bariatric Surgery",      ar:"ما بعد جراحة السمنة"},
+  {v:"cp_autism_adhd",  en:"CP / Autism / ADHD",          ar:"شلل دماغي / توحد / ADHD"},
 ];
-function checkDrugs(meds,lang){
-  if(!meds) return [];
-  const lo=meds.toLowerCase();
-  const flags=[];
-  DRUG_INTERACTIONS.forEach(d=>{if(d.kw.some(k=>lo.includes(k))) d.flags.forEach(f=>flags.push(f[lang]||f.en));});
-  return flags;
-}
 
-// ── ICS calendar generator ─────────────────────────────────────────
-function downloadICS(patientName,followUpDate,doctorNote){
-  const dt=followUpDate.replace(/-/g,"");
-  const uid=Date.now()+"@nutriplan";
-  const ics=[
-    "BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//NutriPlan AI//EN","CALSCALE:GREGORIAN",
-    "BEGIN:VEVENT",`UID:${uid}`,`DTSTART;VALUE=DATE:${dt}`,`DTEND;VALUE=DATE:${dt}`,
-    `SUMMARY:Follow-Up: ${patientName} — Dr. Reda Okasha`,
-    `DESCRIPTION:Nutrition follow-up appointment.\\n${doctorNote||""}`,
-    "END:VEVENT","END:VCALENDAR"
-  ].join("\r\n");
-  const blob=new Blob([ics],{type:"text/calendar;charset=utf-8"});
-  const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  a.href=url; a.download=`followup_${patientName.replace(/\s/g,"_")}.ics`; a.click();
-  URL.revokeObjectURL(url);
-}
+const DIETS = [
+  {v:"mediterranean",en:"🫒 Mediterranean",ar:"🫒 البحر المتوسط",color:"#4A9B7F",
+   macros:"Carbs 45–55% · Protein 15–20% · Fat 30–35% · Na <2300mg"},
+  {v:"dash",        en:"💙 DASH",          ar:"💙 حمية داش",    color:"#2980B9",
+   macros:"Carbs 50–55% · Protein 18–20% · Fat 27–30% · Na <1500mg"},
+  {v:"low_carb",    en:"🥩 Low Carb",      ar:"🥩 منخفض الكربوهيدرات",color:"#E67E22",
+   macros:"Carbs 10–25% · Protein 25–35% · Fat 45–55%"},
+  {v:"moderate_cho",en:"⚖️ Moderate CHO",  ar:"⚖️ كربوهيدرات معتدلة",color:"#7B6ED6",
+   macros:"Carbs 30–40% · Protein 20–25% · Fat 35–40%"},
+  {v:"balanced",    en:"🥗 Balanced",      ar:"🥗 متوازنة",      color:"#1B6B6B",
+   macros:"Carbs 45–65% · Protein 10–35% · Fat 20–35%"},
+];
 
-// ── Email summary generator ────────────────────────────────────────
-function buildEmailBody(plan,patient,dietLabel,caseLabel){
-  if(!plan) return "";
-  const d0=plan.days?.[0];
-  const meals=d0?Object.entries(d0.meals).map(([k,m])=>`  ${k}: ${m.name} (~${m.calories} kcal)`).join("\n"):"";
-  return encodeURIComponent(
-    `Dear ${patient.name||"Patient"},\n\nPlease find a summary of your personalised nutrition plan from Dr. Reda Okasha.\n\n`+
-    `CASE: ${caseLabel}\nDIET TYPE: ${dietLabel}\n`+
-    `DAILY TARGET: ${plan.summary.calories}\nProtein: ${plan.summary.protein} | Carbs: ${plan.summary.carbs} | Fat: ${plan.summary.fat}\n\n`+
-    `SAMPLE DAY (Monday):\n${meals}\n\n`+
-    `KEY PRINCIPLES:\n${plan.keyPrinciples?.map((p,i)=>`${i+1}. ${p}`).join("\n")||""}\n\n`+
-    `FOLLOW-UP: ${plan.followUp}\n\n`+
-    `Dr. Reda Okasha — Consultant Paediatrician & Clinical Nutritionist\n`+
-    `This plan is based on ASPEN & ESPEN guidelines and is personalised for you.`
+const FREQ = [
+  {v:"5meal",  en:"5–6 Small Meals/Day",    ar:"5–6 وجبات صغيرة/يوم",
+   meals:["Breakfast","Morning Snack","Lunch","Afternoon Snack","Dinner","Evening Snack"]},
+  {v:"3plus1", en:"3 Meals + 1 Snack/Day",  ar:"3 وجبات + وجبة خفيفة",
+   meals:["Breakfast","Lunch","Snack","Dinner"]},
+];
+
+const LABS = [
+  {k:"hba1c",   en:"HbA1c (%)",             ref:"<5.7%"},
+  {k:"fbs",     en:"Fasting Glucose (mg/dL)",ref:"70–100"},
+  {k:"chol",    en:"Total Cholesterol",      ref:"<200 mg/dL"},
+  {k:"ldl",     en:"LDL (mg/dL)",            ref:"<100"},
+  {k:"hdl",     en:"HDL (mg/dL)",            ref:">40M/>50F"},
+  {k:"tg",      en:"Triglycerides (mg/dL)",  ref:"<150"},
+  {k:"vitd",    en:"Vitamin D (ng/mL)",      ref:"30–100"},
+  {k:"b12",     en:"Vitamin B12 (pg/mL)",    ref:"200–900"},
+  {k:"ferr",    en:"Ferritin (ng/mL)",       ref:"12–300"},
+  {k:"tsh",     en:"TSH (mIU/L)",            ref:"0.4–4.0"},
+  {k:"creat",   en:"Creatinine (mg/dL)",     ref:"0.7–1.2"},
+  {k:"alb",     en:"Albumin (g/dL)",         ref:"3.5–5.0"},
+];
+
+const MORBIDITIES = [
+  "Type 2 Diabetes","Hypertension","Dyslipidaemia","Hypothyroidism",
+  "PCOS","NAFLD","CKD","Gout","IBS","Anaemia","Osteoporosis","Heart Disease","Sleep Apnea",
+];
+
+function bmi(w,h){const hm=parseFloat(h)/100,wk=parseFloat(w);return(!hm||!wk)?"":(wk/(hm*hm)).toFixed(1);}
+function bmiLabel(b){
+  const n=parseFloat(b);
+  if(!n) return "";
+  if(n<18.5) return "Underweight";
+  if(n<25)   return "Normal";
+  if(n<30)   return "Overweight";
+  if(n<35)   return "Obese I";
+  if(n<40)   return "Obese II";
+  return "Obese III";
+}
+function ree(w,h,age,gender){
+  const wk=parseFloat(w),hcm=parseFloat(h),a=parseFloat(age)||30;
+  if(!wk||!hcm) return 0;
+  const f=gender==="Female";
+  if(a<18){
+    if(f) return a<3?16.252*wk+10.232*(hcm/100)*100-413.5:a<10?16.969*wk+1.618*hcm+371.2:8.365*wk+4.65*hcm+200;
+    return a<3?0.167*wk+15.174*hcm-617.6:a<10?19.59*wk+1.303*hcm+414.9:16.25*wk+1.372*hcm+515.5;
+  }
+  return f?10*wk+6.25*hcm-5*a-161:10*wk+6.25*hcm-5*a+5;
+}
+const AMULT={sedentary:1.2,light:1.375,moderate:1.55,very_active:1.725,extra:1.9};
+const CASE_ADJ={
+  obesity_adult:-600,diabetes:-250,hypertension:0,osteoarthritis:-300,
+  underweight_adult:500,underweight_child:400,post_bariatric:0,cp_autism_adhd:-100,
+};
+
+function Btn({label,onClick,color,outline,small}){
+  return React.createElement("button",{
+    onClick,
+    style:{padding:small?"6px 14px":"10px 22px",borderRadius:9,border:`1.5px solid ${outline?color||C.teal:color||C.teal}`,
+      background:outline?C.white:color||C.teal,color:outline?color||C.teal:C.white,
+      fontSize:small?12:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}
+  },label);
+}
+function Inp({label,rtl,...p}){
+  return React.createElement("div",{style:{marginBottom:14}},
+    label&&React.createElement("label",{style:{display:"block",fontSize:11,fontWeight:600,color:C.slate,marginBottom:3,textAlign:rtl?"right":"left"}},label),
+    React.createElement("input",{...p,style:{width:"100%",boxSizing:"border-box",padding:"9px 11px",borderRadius:8,
+      border:"1.5px solid "+C.border,background:C.white,color:C.ink,fontSize:14,outline:"none",
+      direction:rtl?"rtl":"ltr",fontFamily:"inherit",...(p.style||{})}})
   );
 }
-// ── Translations (full bilingual) ─────────────────────────────────
-const T={
-  en:{
-    appName:"NutriPlan AI",appSub:"Dr. Reda Okasha · Clinical Nutrition Platform",
-    steps:["Patient","Clinical","Diet Setup","Plan","Progress","Templates"],
-    newPlan:"+ New Plan",printSave:"🖨️ Print",langBtn:"🇸🇦 عربي",
-    patientInfo:"Patient Information",fullName:"FULL NAME",dob:"DATE OF BIRTH",
-    age:"AGE (years)",gender:"GENDER",contact:"CONTACT / FILE NO.",
-    genders:["","Male","Female","Prefer not to say"],
-    clinicalData:"Clinical Data",anthropometrics:"Anthropometrics",
-    weight:"WEIGHT (kg)",height:"HEIGHT (cm)",bmiLabel:"BMI (auto-calculated)",
-    waist:"WAIST CIRCUMFERENCE (cm)",activity:"PHYSICAL ACTIVITY LEVEL",
-    activityLevels:[
-      {value:"sedentary",label:"Sedentary (no exercise)"},
-      {value:"light",label:"Lightly Active (1–3 days/week)"},
-      {value:"moderate",label:"Moderately Active (3–5 days/week)"},
-      {value:"very_active",label:"Very Active (6–7 days/week)"},
-      {value:"extra_active",label:"Extra Active (physical job + exercise)"},
-    ],
-    labResults:"Laboratory Results",medHistory:"Medical History",
-    morbidities:"CURRENT MORBIDITIES",medications:"CURRENT MEDICATIONS",
-    allergies:"FOOD ALLERGIES / INTOLERANCES",
-    growthChart:"Paediatric WHO Growth Chart (BMI-for-Age)",
-    zScore:"WHO Z-Score",schofieldNote:"REE calculated using Schofield equation (Paediatric, WHO/FAO 1985)",
-    mifflinNote:"REE calculated using Mifflin-St Jeor equation (Adults)",
-    dietConfig:"Diet Configuration",caseType:"CASE TYPE",
-    selectCase:"— Select Case Type —",dietType:"DIET TYPE",
-    mealFreq:"MEAL FREQUENCY",caloriesTarget:"DAILY CALORIE TARGET",
-    calorieOverride:"Custom Override",dietTable:"Diet Comparison Table",
-    recommended:"✓ Recommended",
-    days:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],
-    meals:{breakfast:"Breakfast",morningSnack:"Morning Snack",lunch:"Lunch",
-           afternoonSnack:"Afternoon Snack",dinner:"Dinner",eveningSnack:"Evening Snack",snack:"Snack"},
-    mealIcons:{breakfast:"🌅",morningSnack:"🍎",lunch:"☀️",afternoonSnack:"🫐",dinner:"🌙",eveningSnack:"🫖",snack:"🍊"},
-    generate:"✨ Generate Diet Plan",generating:"Generating…",
-    back:"← Back",next:"Next →",
-    targets:"Daily Nutritional Targets",rationale:"Clinical Rationale",
-    keyPrinciples:"Key Dietary Principles",supplements:"Recommended Supplements",
-    clinicalFlags:"Clinical Flags",drugFlags:"Drug–Nutrient Interactions",
-    lifestyle:"Lifestyle Advice",followUp:"Follow-Up Plan",
-    caseSummary:"Case Summary",patient:"Patient",
-    weeklyPlan:"WEEKLY NUTRITION PLAN",guidelines:"ASPEN · ESPEN Guidelines",
-    generated:"Generated",
-    // Progress
-    progressTab:"Progress & Labs Tracker",addRecord:"+ Add Visit Record",
-    visitDate:"Visit Date",visitWeight:"Weight (kg)",visitNotes:"Notes",
-    labTracked:"KEY LAB TREND",selectMetric:"Chart metric:",
-    noRecords:"No visits logged yet. Add the first record after the initial visit.",
-    totalChange:"Total weight change",from:"from",
-    // Templates
-    templatesTab:"Template Library",saveTemplate:"💾 Save as Template",
-    templateName:"Template Name",savedTemplates:"Saved Templates",
-    loadTemplate:"Load",deleteTemplate:"✕",noTemplates:"No templates saved yet. Generate a plan and save it as a template.",
-    templateSaved:"Template saved!",
-    // Email / Cal
-    emailPlan:"📧 Email Summary",scheduleFollowUp:"📅 Schedule Follow-Up",
-    followUpDate:"Follow-Up Date",followUpNote:"Note for calendar",
-    downloadICS:"⬇ Download .ics",
-    // Misc
-    dailyTotal:"Daily Total",kcal:"kcal",dose:"Dose",reason:"Reason",
-    energy:"Energy",protein:"Protein",carbs:"Carbohydrates",fat:"Fat",fiber:"Fibre",fluid:"Fluid",
-    macroIcons:{energy:"⚡",protein:"💪",carbs:"🌾",fat:"🫒",fiber:"🥦",fluid:"💧"},
-    errorCase:"Please select a case type.",errorMeasure:"Weight & height required.",
-    errorDiet:"Please select a diet type.",errorGenerate:"Generation failed. Please retry.",
-    analysing:"🤖 Analysing patient data and crafting personalised plan…",
-    disclaimer:"This plan is based on ASPEN & ESPEN guidelines and is tailored for the patient above. Not for redistribution.",
-    bmiCats:{underweight:"Underweight",normal:"Normal",overweight:"Overweight",
-             obese1:"Obese I",obese2:"Obese II",obese3:"Obese III"},
-    diabetesTypes:["Type 1","Type 2","Gestational (GDM)","Pre-diabetes"],
-    bariatricTypes:["Sleeve Gastrectomy","Roux-en-Y Gastric Bypass","Adjustable Gastric Band","Biliopancreatic Diversion"],
-    cpList:["Cerebral Palsy","Autism Spectrum Disorder","ADHD","Intellectual Disability","Sensory Processing Disorder"],
-    notesPlaceholder:"e.g. Prefers Middle Eastern food. Night shift worker. Ramadan fasting noted. Texture modification required...",
-    regenerate:"🔄 Regenerate",adjustSettings:"← Adjust Settings",toProgress:"📈 Progress & Labs",toTemplates:"📚 Templates",
-  },
-  ar:{
-    appName:"نيوتري بلان AI",appSub:"د. ريدا عكاشة · منصة التغذية السريرية",
-    steps:["المريض","السريري","إعداد الحمية","الخطة","المتابعة","القوالب"],
-    newPlan:"+ خطة جديدة",printSave:"🖨️ طباعة",langBtn:"🇬🇧 English",
-    patientInfo:"بيانات المريض",fullName:"الاسم الكامل",dob:"تاريخ الميلاد",
-    age:"العمر (سنوات)",gender:"الجنس",contact:"جهة الاتصال / رقم الملف",
-    genders:["","ذكر","أنثى","غير محدد"],
-    clinicalData:"البيانات السريرية",anthropometrics:"القياسات الجسمية",
-    weight:"الوزن (كغ)",height:"الطول (سم)",bmiLabel:"مؤشر كتلة الجسم (محسوب)",
-    waist:"محيط الخصر (سم)",activity:"مستوى النشاط البدني",
-    activityLevels:[
-      {value:"sedentary",label:"خامل (لا رياضة)"},
-      {value:"light",label:"خفيف (1–3 أيام/أسبوع)"},
-      {value:"moderate",label:"معتدل (3–5 أيام/أسبوع)"},
-      {value:"very_active",label:"عالٍ (6–7 أيام/أسبوع)"},
-      {value:"extra_active",label:"مكثف جداً (عمل بدني + رياضة)"},
-    ],
-    labResults:"نتائج المختبر",medHistory:"التاريخ الطبي",
-    morbidities:"الأمراض الحالية",medications:"الأدوية الحالية",
-    allergies:"الحساسية الغذائية / عدم التحمل",
-    growthChart:"مخطط نمو WHO للأطفال (BMI حسب العمر)",
-    zScore:"النقاط المعيارية WHO",schofieldNote:"تم حساب REE بمعادلة Schofield (أطفال، WHO/FAO 1985)",
-    mifflinNote:"تم حساب REE بمعادلة Mifflin-St Jeor (بالغون)",
-    dietConfig:"إعداد الحمية",caseType:"نوع الحالة",
-    selectCase:"— اختر نوع الحالة —",dietType:"نوع الحمية",
-    mealFreq:"عدد وجبات اليوم",caloriesTarget:"هدف السعرات الحرارية",
-    calorieOverride:"تعديل يدوي",dietTable:"جدول مقارنة الحميات",
-    recommended:"✓ موصى به",
-    days:["الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"],
-    meals:{breakfast:"الإفطار",morningSnack:"وجبة الضحى",lunch:"الغداء",
-           afternoonSnack:"وجبة العصر",dinner:"العشاء",eveningSnack:"وجبة المساء",snack:"وجبة خفيفة"},
-    mealIcons:{breakfast:"🌅",morningSnack:"🍎",lunch:"☀️",afternoonSnack:"🫐",dinner:"🌙",eveningSnack:"🫖",snack:"🍊"},
-    generate:"✨ إنشاء خطة الغذاء",generating:"جاري الإنشاء…",
-    back:"→ رجوع",next:"التالي ←",
-    targets:"الأهداف الغذائية اليومية",rationale:"المبرر السريري",
-    keyPrinciples:"المبادئ الغذائية الأساسية",supplements:"المكملات الموصى بها",
-    clinicalFlags:"التنبيهات السريرية",drugFlags:"تفاعلات الدواء مع الغذاء",
-    lifestyle:"نصائح نمط الحياة",followUp:"خطة المتابعة",
-    caseSummary:"ملخص الحالة",patient:"المريض",
-    weeklyPlan:"خطة التغذية الأسبوعية",guidelines:"إرشادات ASPEN · ESPEN",
-    generated:"تاريخ الإصدار",
-    progressTab:"متابعة التقدم والمختبر",addRecord:"+ إضافة زيارة",
-    visitDate:"تاريخ الزيارة",visitWeight:"الوزن (كغ)",visitNotes:"ملاحظات",
-    labTracked:"مؤشر المختبر",selectMetric:"الرسم البياني:",
-    noRecords:"لا توجد زيارات مسجلة. أضف أول سجل بعد الزيارة.",
-    totalChange:"إجمالي التغيير في الوزن",from:"من",
-    templatesTab:"مكتبة القوالب",saveTemplate:"💾 حفظ كقالب",
-    templateName:"اسم القالب",savedTemplates:"القوالب المحفوظة",
-    loadTemplate:"تحميل",deleteTemplate:"✕",noTemplates:"لا قوالب محفوظة. أنشئ خطة واحفظها كقالب.",
-    templateSaved:"تم حفظ القالب!",
-    emailPlan:"📧 إرسال الملخص بالبريد",scheduleFollowUp:"📅 جدولة متابعة",
-    followUpDate:"تاريخ المتابعة",followUpNote:"ملاحظة للتقويم",
-    downloadICS:"⬇ تنزيل .ics",
-    dailyTotal:"إجمالي اليوم",kcal:"سعرة",dose:"الجرعة",reason:"السبب",
-    energy:"الطاقة",protein:"البروتين",carbs:"الكربوهيدرات",fat:"الدهون",fiber:"الألياف",fluid:"السوائل",
-    macroIcons:{energy:"⚡",protein:"💪",carbs:"🌾",fat:"🫒",fiber:"🥦",fluid:"💧"},
-    errorCase:"يرجى تحديد نوع الحالة.",errorMeasure:"الوزن والطول مطلوبان.",
-    errorDiet:"يرجى اختيار نوع الحمية.",errorGenerate:"فشل الإنشاء. حاول مجدداً.",
-    analysing:"🤖 تحليل بيانات المريض وإنشاء الخطة الشخصية…",
-    disclaimer:"تستند هذه الخطة إلى إرشادات ASPEN وESPEN وهي مخصصة للمريض أعلاه.",
-    bmiCats:{underweight:"نقص الوزن",normal:"طبيعي",overweight:"زيادة وزن",
-             obese1:"سمنة I",obese2:"سمنة II",obese3:"سمنة III"},
-    diabetesTypes:["النوع الأول","النوع الثاني","سكري الحمل","مقدمات السكري"],
-    bariatricTypes:["تكميم المعدة","تحويل مسار المعدة","ربط المعدة","انحراف الاثني عشر"],
-    cpList:["الشلل الدماغي","طيف التوحد","فرط الحركة ADHD","الإعاقة الذهنية","اضطراب المعالجة الحسية"],
-    notesPlaceholder:"مثال: يفضل الأطعمة الشرقية. يعمل ليلاً. مراعاة رمضان. تعديل قوام الطعام مطلوب...",
-    regenerate:"🔄 إعادة إنشاء",adjustSettings:"← تعديل الإعدادات",toProgress:"📈 المتابعة والمختبر",toTemplates:"📚 القوالب",
-  }
-};
-
-// ── Diet types ─────────────────────────────────────────────────────
-const DIET_TYPES=[
-  {value:"mediterranean",label:{en:"Mediterranean",ar:"البحر المتوسط"},icon:"🫒",color:"#4A9B7F",
-   carbs:"45–55%",protein:"15–20%",fat:"30–35%",fiber:"25–35g",sodium:"<2300mg",
-   keyFoods:{en:"Olive oil, fish, legumes, vegetables, whole grains",ar:"زيت زيتون، سمك، بقوليات، خضروات، حبوب كاملة"},
-   bestFor:["hypertension","obesity_adult","diabetes","osteoarthritis"],
-   desc:{en:"Heart-healthy, anti-inflammatory, rich in unsaturated fats",ar:"صحي للقلب، مضاد للالتهابات، غني بالدهون غير المشبعة"}},
-  {value:"dash",label:{en:"DASH",ar:"حمية داش"},icon:"💙",color:"#2980B9",
-   carbs:"50–55%",protein:"18–20%",fat:"27–30%",fiber:"30g",sodium:"<1500mg",
-   keyFoods:{en:"Low sodium, high potassium, fruits, vegetables, low-fat dairy",ar:"قليل الصوديوم، عالي البوتاسيوم، فواكه، خضروات، ألبان قليلة الدسم"},
-   bestFor:["hypertension","diabetes","obesity_adult"],
-   desc:{en:"Clinically proven to lower blood pressure; high potassium & minerals",ar:"مثبت سريرياً لخفض ضغط الدم، غني بالبوتاسيوم والمعادن"}},
-  {value:"low_carb",label:{en:"Low Carb",ar:"منخفض الكربوهيدرات"},icon:"🥩",color:"#E67E22",
-   carbs:"10–25%",protein:"25–35%",fat:"45–55%",fiber:"20–25g",sodium:"<2300mg",
-   keyFoods:{en:"Meat, fish, eggs, cheese, nuts, non-starchy vegetables",ar:"لحوم، سمك، بيض، جبن، مكسرات، خضروات غير نشوية"},
-   bestFor:["obesity_adult","diabetes","post_bariatric"],
-   desc:{en:"Reduces insulin spikes, promotes fat loss, improves glycaemia",ar:"يقلل ارتفاع الأنسولين، يعزز فقدان الدهون، يحسن السكر"}},
-  {value:"moderate_cho",label:{en:"Moderate CHO",ar:"كربوهيدرات معتدلة"},icon:"⚖️",color:"#7B6ED6",
-   carbs:"30–40%",protein:"20–25%",fat:"35–40%",fiber:"25–30g",sodium:"<2300mg",
-   keyFoods:{en:"Complex carbs, lean protein, healthy fats, controlled portions",ar:"كربوهيدرات معقدة، بروتين خالي، دهون صحية، حصص محكومة"},
-   bestFor:["diabetes","obesity_adult","post_bariatric","osteoarthritis"],
-   desc:{en:"Balanced glycaemic control with adequate satiety and micronutrients",ar:"تحكم متوازن في السكر مع شبع ومغذيات كافية"}},
-  {value:"balanced",label:{en:"Balanced",ar:"متوازنة"},icon:"🥗",color:"#1B6B6B",
-   carbs:"45–65%",protein:"10–35%",fat:"20–35%",fiber:"25–38g",sodium:"<2300mg",
-   keyFoods:{en:"All food groups per DRI guidelines — variety and moderation",ar:"جميع المجموعات الغذائية — تنوع واعتدال وفق DRI"},
-   bestFor:["underweight_adult","underweight_child","cp_autism_adhd","osteoarthritis"],
-   desc:{en:"Covers all micronutrient needs; ideal for growth and rehabilitation",ar:"يغطي جميع احتياجات المغذيات الدقيقة، مثالي للنمو وإعادة التأهيل"}},
-];
-
-const CASE_TYPES=[
-  {value:"obesity_adult",  en:"Obesity – Adults",            ar:"السمنة – البالغون"},
-  {value:"diabetes",       en:"Diabetes (T1/T2/GDM)",        ar:"السكري (النوع الأول/الثاني/الحمل)"},
-  {value:"hypertension",   en:"Hypertension",                ar:"ارتفاع ضغط الدم"},
-  {value:"osteoarthritis", en:"Osteoarthritis",              ar:"التهاب المفاصل التنكسي"},
-  {value:"underweight_adult",en:"Underweight – Adults",      ar:"نقص الوزن – البالغون"},
-  {value:"underweight_child",en:"Underweight – Children",    ar:"نقص الوزن – الأطفال"},
-  {value:"post_bariatric", en:"Post-Bariatric Surgery",      ar:"ما بعد جراحة السمنة"},
-  {value:"cp_autism_adhd", en:"CP / Autism / ADHD",          ar:"الشلل الدماغي / التوحد / فرط الحركة"},
-];
-
-const CASE_DIET_RECS={
-  obesity_adult:["low_carb","moderate_cho","mediterranean"],
-  diabetes:["low_carb","moderate_cho","mediterranean"],
-  hypertension:["dash","mediterranean","balanced"],
-  osteoarthritis:["mediterranean","moderate_cho","balanced"],
-  underweight_adult:["balanced","moderate_cho","mediterranean"],
-  underweight_child:["balanced"],
-  post_bariatric:["low_carb","moderate_cho"],
-  cp_autism_adhd:["balanced","mediterranean"],
-};
-
-const MEAL_FREQ_OPTS=[
-  {value:"5meal",en:"5–6 Small Meals / Day",ar:"5–6 وجبات / يوم",
-   desc:{en:"Every 2.5–3 hrs — ideal for diabetes, post-bariatric, children",ar:"كل 2.5–3 ساعات — مثالي للسكري وما بعد العمليات والأطفال"},
-   meals:["breakfast","morningSnack","lunch","afternoonSnack","dinner","eveningSnack"]},
-  {value:"3plus1",en:"3 Meals + 1 Snack / Day",ar:"3 وجبات + وجبة خفيفة / يوم",
-   desc:{en:"Classic — suitable for most adult cases",ar:"هيكل كلاسيكي — مناسب لمعظم البالغين"},
-   meals:["breakfast","lunch","snack","dinner"]},
-];
-
-const LAB_FIELDS=[
-  {key:"hba1c",   en:"HbA1c (%)",             ar:"الهيموغلوبين السكري (%)",     normal:"<5.7%"},
-  {key:"fbs",     en:"Fasting Blood Sugar",   ar:"سكر الدم الصائم (mg/dL)",    normal:"70–100"},
-  {key:"chol",    en:"Total Cholesterol",     ar:"الكوليسترول الكلي (mg/dL)",  normal:"<200"},
-  {key:"ldl",     en:"LDL (mg/dL)",           ar:"الكوليسترول الضار",          normal:"<100"},
-  {key:"hdl",     en:"HDL (mg/dL)",           ar:"الكوليسترول النافع",         normal:">40M/>50F"},
-  {key:"tg",      en:"Triglycerides (mg/dL)", ar:"الدهون الثلاثية",            normal:"<150"},
-  {key:"creat",   en:"Creatinine (mg/dL)",    ar:"الكرياتينين",                normal:"0.7–1.2"},
-  {key:"uric",    en:"Uric Acid (mg/dL)",     ar:"حمض اليوريك",               normal:"2.4–7.0"},
-  {key:"vitd",    en:"Vitamin D (ng/mL)",     ar:"فيتامين د",                  normal:"30–100"},
-  {key:"ferr",    en:"Ferritin (ng/mL)",      ar:"الفيريتين",                  normal:"12–150F"},
-  {key:"tsh",     en:"TSH (mIU/L)",           ar:"هرمون الغدة الدرقية",        normal:"0.4–4.0"},
-  {key:"alb",     en:"Albumin (g/dL)",        ar:"الألبومين",                  normal:"3.5–5.0"},
-  {key:"ca",      en:"Calcium (mg/dL)",       ar:"الكالسيوم",                  normal:"8.5–10.5"},
-  {key:"b12",     en:"Vitamin B12 (pg/mL)",   ar:"فيتامين ب12",               normal:"200–900"},
-];
-// Labs to track in progress chart
-const TRACKABLE_LABS=[
-  {key:"weight",en:"Weight (kg)",ar:"الوزن (كغ)",color:"#1B6B6B",unit:"kg"},
-  {key:"hba1c", en:"HbA1c (%)",ar:"HbA1c (%)",color:"#E67E22",unit:"%"},
-  {key:"fbs",   en:"Fasting Glucose",ar:"سكر صائم",color:"#E8A23A",unit:"mg/dL"},
-  {key:"chol",  en:"Cholesterol",ar:"كوليسترول",color:"#7B6ED6",unit:"mg/dL"},
-  {key:"tg",    en:"Triglycerides",ar:"دهون ثلاثية",color:"#E91E8C",unit:"mg/dL"},
-  {key:"vitd",  en:"Vitamin D",ar:"فيتامين د",color:"#2980B9",unit:"ng/mL"},
-];
-
-const MORBIDITY_LIST=[
-  {en:"Type 2 Diabetes",ar:"سكري النوع الثاني"},{en:"Type 1 Diabetes",ar:"سكري النوع الأول"},
-  {en:"Hypertension",ar:"ارتفاع ضغط الدم"},{en:"Dyslipidaemia",ar:"خلل شحوم الدم"},
-  {en:"Hypothyroidism",ar:"قصور الغدة الدرقية"},{en:"PCOS",ar:"تكيس المبايض"},
-  {en:"NAFLD",ar:"تليف كبدي دهني"},{en:"CKD",ar:"أمراض الكلى المزمنة"},
-  {en:"Gout",ar:"النقرس"},{en:"IBS",ar:"القولون العصبي"},
-  {en:"Celiac",ar:"مرض سيلياك"},{en:"Anaemia",ar:"فقر الدم"},
-  {en:"Osteoporosis",ar:"هشاشة العظام"},{en:"Heart Disease",ar:"أمراض القلب"},
-  {en:"Sleep Apnea",ar:"انقطاع النفس"},{en:"Depression/Anxiety",ar:"اكتئاب/قلق"},
-];
-
-function calcBMI(wt,ht){const h=parseFloat(ht)/100,w=parseFloat(wt);return(!h||!w||h<=0)?"":(w/(h*h)).toFixed(1);}
-function bmiCat(bmi,t){
-  const b=parseFloat(bmi);
-  if(!b) return{label:"—",color:C.slate};
-  if(b<18.5) return{label:t.bmiCats.underweight,color:"#2980B9"};
-  if(b<25)   return{label:t.bmiCats.normal,color:C.sage};
-  if(b<30)   return{label:t.bmiCats.overweight,color:C.amber};
-  if(b<35)   return{label:t.bmiCats.obese1,color:"#E67E22"};
-  if(b<40)   return{label:t.bmiCats.obese2,color:C.red};
-  return     {label:t.bmiCats.obese3,color:C.red};
+function Sel({label,options,rtl,...p}){
+  return React.createElement("div",{style:{marginBottom:14}},
+    label&&React.createElement("label",{style:{display:"block",fontSize:11,fontWeight:600,color:C.slate,marginBottom:3,textAlign:rtl?"right":"left"}},label),
+    React.createElement("select",{...p,style:{width:"100%",padding:"9px 11px",borderRadius:8,
+      border:"1.5px solid "+C.border,background:C.white,color:C.ink,fontSize:14,outline:"none",
+      appearance:"none",direction:rtl?"rtl":"ltr",fontFamily:"inherit"}},
+      options.map(function(o,i){return React.createElement("option",{key:i,value:o.value!==undefined?o.value:o},o.label||o);})
+    )
+  );
 }
 
-// ── Primitives ─────────────────────────────────────────────────────
-const Inp=({label,rtl,...p})=>(
-  <div style={{marginBottom:14}}>
-    {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.slate,marginBottom:4,textAlign:rtl?"right":"left"}}>{label}</label>}
-    <input {...p} style={{width:"100%",boxSizing:"border-box",padding:"9px 12px",borderRadius:8,
-      border:`1.5px solid ${C.border}`,background:C.white,color:C.ink,fontSize:14,outline:"none",
-      direction:rtl?"rtl":"ltr",...p.style}}
-      onFocus={e=>e.target.style.borderColor=C.tealMid} onBlur={e=>e.target.style.borderColor=C.border}/>
-  </div>
-);
-const Sel=({label,options,rtl,...p})=>(
-  <div style={{marginBottom:14}}>
-    {label&&<label style={{display:"block",fontSize:12,fontWeight:600,color:C.slate,marginBottom:4,textAlign:rtl?"right":"left"}}>{label}</label>}
-    <select {...p} style={{width:"100%",padding:"9px 12px",borderRadius:8,border:`1.5px solid ${C.border}`,
-      background:C.white,color:C.ink,fontSize:14,outline:"none",appearance:"none",
-      backgroundImage:`url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%231B6B6B' strokeWidth='1.5' fill='none' strokeLinecap='round'/%3E%3C/svg%3E")`,
-      backgroundRepeat:"no-repeat",backgroundPosition:rtl?"left 12px center":"right 12px center",
-      paddingRight:rtl?12:32,paddingLeft:rtl?32:12,direction:rtl?"rtl":"ltr",...p.style}}>
-      {options.map((o,i)=><option key={i} value={o.value??o}>{o.label??o}</option>)}
-    </select>
-  </div>
-);
-const Chip=({label,active,onClick,color})=>(
-  <button onClick={onClick} style={{padding:"5px 13px",borderRadius:20,fontSize:12,fontWeight:600,
-    margin:"3px 4px 3px 0",border:`1.5px solid ${active?(color||C.teal):C.border}`,
-    background:active?(color||C.teal):C.white,color:active?C.white:C.slate,cursor:"pointer",transition:"all .2s"}}>
-    {label}
-  </button>
-);
-const SecT=({children,icon,rtl})=>(
-  <div style={{display:"flex",alignItems:"center",gap:8,borderBottom:`2px solid ${C.tealLt}`,
-    paddingBottom:8,marginBottom:16,marginTop:22,flexDirection:rtl?"row-reverse":"row"}}>
-    {icon&&<span style={{fontSize:17}}>{icon}</span>}
-    <h3 style={{margin:0,fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8}}>{children}</h3>
-  </div>
-);
-const Badge=({text,color})=>(
-  <span style={{fontSize:11,fontWeight:700,padding:"2px 9px",borderRadius:12,background:color+"18",color}}>{text}</span>
-);
-export default function NutritionPlanner(){
+function App(){
   const [lang,setLang]=useState("en");
-  const t=T[lang]; const rtl=lang==="ar"; const dir=rtl?"rtl":"ltr";
+  const ar=lang==="ar";
+  const [apiKey,setApiKey]=useState(function(){try{return localStorage.getItem("nk")||"";}catch(e){return "";}});
+  const [keyInput,setKeyInput]=useState("");
+  const [keyErr,setKeyErr]=useState("");
   const [step,setStep]=useState(1);
   const [loading,setLoading]=useState(false);
   const [plan,setPlan]=useState(null);
-  const [error,setError]=useState("");
-  const [showDietTable,setShowDietTable]=useState(false);
-  const [showEmailPanel,setShowEmailPanel]=useState(false);
-  const [showCalPanel,setShowCalPanel]=useState(false);
-  const [followUpDate,setFollowUpDate]=useState("");
-  const [followUpNote,setFollowUpNote]=useState("");
-  const [templateSavedMsg,setTemplateSavedMsg]=useState(false);
+  const [err,setErr]=useState("");
 
-  const [patient,setPatient]=useState({name:"",dob:"",age:"",gender:"",contact:""});
-  const [clinical,setClinical]=useState({weight:"",height:"",waist:"",activity:"sedentary"});
+  // Patient
+  const [name,setName]=useState(""); const [dob,setDob]=useState("");
+  const [age,setAge]=useState(""); const [gender,setGender]=useState("Male");
+  const [contact,setContact]=useState("");
+  // Clinical
+  const [wt,setWt]=useState(""); const [ht,setHt]=useState("");
+  const [waist,setWaist]=useState(""); const [activity,setActivity]=useState("sedentary");
   const [labs,setLabs]=useState({});
-  const [morbidities,setMorbidities]=useState([]);
-  const [medications,setMedications]=useState("");
-  const [allergies,setAllergies]=useState("");
+  const [morbs,setMorbs]=useState([]);
+  const [meds,setMeds]=useState(""); const [allergies,setAllergies]=useState("");
+  // Diet config
+  const [caseType,setCaseType]=useState(""); const [dietType,setDietType]=useState("");
+  const [freq,setFreq]=useState("3plus1"); const [notes,setNotes]=useState("");
+  const [calOverride,setCalOverride]=useState(""); const [useOverride,setUseOverride]=useState(false);
 
-  const [caseType,setCaseType]=useState("");
-  const [dietType,setDietType]=useState("");
-  const [mealFreq,setMealFreq]=useState("3plus1");
-  const [calorieOverride,setCalorieOverride]=useState("");
-  const [useOverride,setUseOverride]=useState(false);
-  const [diabetesType,setDiabetesType]=useState("Type 2");
-  const [cpConditions,setCpConditions]=useState([]);
-  const [additionalNotes,setAdditionalNotes]=useState("");
-  const [bariatricType,setBariatricType]=useState("Sleeve Gastrectomy");
-  const [bariatricWeeks,setBariatricWeeks]=useState("");
+  const BMI=bmi(wt,ht);
+  const REE=ree(wt,ht,age,gender);
+  const ACT=AMULT[activity]||1.2;
+  const TDEE=REE?Math.round(REE*ACT):0;
+  const ADJ=CASE_ADJ[caseType]||0;
+  const sugCals=TDEE?Math.max(1200,TDEE+ADJ):0;
+  const finalCals=useOverride&&calOverride?parseInt(calOverride):sugCals;
+  const freqObj=FREQ.find(function(f){return f.v===freq;})||FREQ[1];
+  const dietObj=DIETS.find(function(d){return d.v===dietType;});
+  const caseObj=CASES.find(function(c){return c.v===caseType;});
 
-  const [progressRecords,setProgressRecords]=useState([]);
-  const [newRecord,setNewRecord]=useState({date:"",weight:"",hba1c:"",fbs:"",chol:"",tg:"",vitd:"",notes:""});
-  const [chartMetric,setChartMetric]=useState("weight");
-
-  const [templates,setTemplates]=useState([]);
-  const [newTemplateName,setNewTemplateName]=useState("");
-
-  const bmi=calcBMI(clinical.weight,clinical.height);
-  const bc=bmiCat(bmi,t);
-  const isPed=parseInt(patient.age||0)<18&&parseInt(patient.age||0)>=2;
-  const isFemale=patient.gender==="Female"||patient.gender==="أنثى";
-  const calSug=suggestCalories(clinical.weight,clinical.height,patient.age,patient.gender,clinical.activity,caseType,bariatricWeeks);
-  const finalCals=useOverride&&calorieOverride?parseInt(calorieOverride):calSug.value;
-  const drugFlags=checkDrugs(medications,lang);
-  const mealFreqObj=MEAL_FREQ_OPTS.find(m=>m.value===mealFreq);
-  const dietObj=DIET_TYPES.find(d=>d.value===dietType);
-  const caseObj=CASE_TYPES.find(c=>c.value===caseType);
-  const recDiets=caseType?CASE_DIET_RECS[caseType]||[]:[];
-  const barPhase=caseType==="post_bariatric"?getBariatricPhase(bariatricWeeks):null;
-  const pzScore=isPed?calcPedZScore(bmi,patient.age,patient.gender):null;
-
-  function handleCaseChange(v){
-    setCaseType(v);
-    const r=CASE_DIET_RECS[v]||[];
-    if(r.length) setDietType(r[0]);
-    setError("");
-  }
-  function toggleMorb(m){setMorbidities(p=>p.includes(m)?p.filter(x=>x!==m):[...p,m]);}
-  function toggleCP(c){setCpConditions(p=>p.includes(c)?p.filter(x=>x!==c):[...p,c]);}
-
-  function saveTemplate(){
-    if(!caseType||!dietType) return;
-    const name=newTemplateName||(caseObj?.[lang]||caseObj?.en)+" – "+(dietObj?.label[lang]||dietObj?.label.en);
-    setTemplates(prev=>[...prev,{
-      id:Date.now(),name,caseType,dietType,mealFreq,
-      calorieOverride:useOverride?calorieOverride:"",
-      additionalNotes,morbidities:[...morbidities],medications,allergies,
-      diabetesType,cpConditions:[...cpConditions],bariatricType,bariatricWeeks,
-      savedAt:new Date().toLocaleDateString(),
-    }]);
-    setNewTemplateName("");
-    setTemplateSavedMsg(true);
-    setTimeout(()=>setTemplateSavedMsg(false),3000);
-  }
-  function loadTemplate(tmpl){
-    setCaseType(tmpl.caseType); setDietType(tmpl.dietType); setMealFreq(tmpl.mealFreq);
-    if(tmpl.calorieOverride){setUseOverride(true);setCalorieOverride(tmpl.calorieOverride);}
-    setAdditionalNotes(tmpl.additionalNotes||""); setMorbidities(tmpl.morbidities||[]);
-    setMedications(tmpl.medications||""); setAllergies(tmpl.allergies||"");
-    setDiabetesType(tmpl.diabetesType||"Type 2"); setCpConditions(tmpl.cpConditions||[]);
-    setBariatricType(tmpl.bariatricType||"Sleeve Gastrectomy"); setBariatricWeeks(tmpl.bariatricWeeks||"");
-    setStep(3);
+  function saveKey(){
+    const k=keyInput.trim();
+    if(!k.startsWith("sk-ant")){setKeyErr("Key must start with sk-ant-");return;}
+    try{localStorage.setItem("nk",k);}catch(e){}
+    setApiKey(k);setKeyErr("");setKeyInput("");
   }
 
-  function buildPrompt(){
-    const labLines=LAB_FIELDS.filter(f=>labs[f.key]).map(f=>`  - ${f.en}: ${labs[f.key]} (Ref: ${f.normal})`).join("\n");
-    const caseLabel=caseObj?.en||caseType;
-    const dietLabel=dietObj?.label.en||dietType;
-    const freqLabel=mealFreqObj?.en||mealFreq;
-    const mealList=mealFreqObj?.meals||["breakfast","lunch","snack","dinner"];
-    const macros=dietObj?`Carbs ${dietObj.carbs}, Protein ${dietObj.protein}, Fat ${dietObj.fat}, Fibre ${dietObj.fiber}${dietObj.sodium?`, Sodium ${dietObj.sodium}`:""}`:""
-    const reeFormula=isPed?"Schofield (Paediatric)":"Mifflin-St Jeor";
-    const caseExtra=caseType==="diabetes"?` — ${diabetesType}`:
-      caseType==="post_bariatric"?` — ${bariatricType}, Week ${bariatricWeeks||"?"} (${barPhase?.en||""})`:
-      caseType==="cp_autism_adhd"?` — ${cpConditions.join(", ")||"unspecified"}`:""
-    return `You are a clinical dietitian AI. Generate an evidence-based 7-day nutrition plan strictly following ASPEN and ESPEN guidelines.
+  async function generate(){
+    if(!caseType){setErr("Please select a case type.");return;}
+    if(!wt||!ht){setErr("Weight and height are required.");return;}
+    if(!dietType){setErr("Please select a diet type.");return;}
+    setErr("");setLoading(true);setPlan(null);
+    const labLines=LABS.filter(function(f){return labs[f.k];}).map(function(f){return "  "+f.en+": "+labs[f.k]+" (Ref: "+f.ref+")";}).join("\n");
+    const mealSlots=freqObj.meals.join(", ");
+    const prompt="You are a clinical dietitian. Generate a 7-day nutrition plan following ASPEN and ESPEN guidelines.\n\nPATIENT: "+name+" | DOB: "+dob+" | Age: "+age+" | Gender: "+gender+"\nWeight: "+wt+"kg | Height: "+ht+"cm | BMI: "+BMI+" | Activity: "+activity+"\n\nLABS:\n"+(labLines||"None")+"\n\nCOMORBIDITIES: "+(morbs.join(", ")||"None")+"\nMEDICATIONS: "+(meds||"None")+"\nALLERGIES: "+(allergies||"None")+"\n\nCASE: "+(caseObj?caseObj.en:caseType)+"\nDIET: "+(dietObj?dietObj.en:dietType)+" — "+(dietObj?dietObj.macros:"")+"\nMEALS/DAY: "+freqObj.en+" ("+mealSlots+")\nCALORIES: "+finalCals+" kcal/day\n\nNOTES: "+(notes||"None")+"\n\nReturn ONLY valid JSON, no markdown:\n{\n  \"summary\":{\"calories\":\""+finalCals+" kcal/day\",\"protein\":\"Xg\",\"carbs\":\"Xg\",\"fat\":\"Xg\",\"fiber\":\"Xg\",\"fluid\":\"XL\",\"rationale\":\"2 sentences citing ASPEN/ESPEN\"},\n  \"flags\":[\"clinical warning\"],\n  \"supplements\":[{\"name\":\"x\",\"dose\":\"x\",\"reason\":\"x\"}],\n  \"keyPrinciples\":[\"p1\",\"p2\",\"p3\",\"p4\",\"p5\"],\n  \"days\":[\n    {\"day\":\"Monday\",\"meals\":{"+freqObj.meals.map(function(m){return "\""+m+"\":{\"name\":\"...\",\"items\":[\"item with portion\"],\"calories\":000,\"notes\":\"tip\"}";}).join(",")+" },\"total\":0}\n  ],\n  \"lifestyle\":[\"advice\"],\n  \"followUp\":\"recommendation\"\n}\nAll 7 days. Egyptian/Middle Eastern food. Specific portions. No markdown.";
 
-PATIENT:
-Name: ${patient.name||"Patient"} | DOB: ${patient.dob||"N/A"} | Age: ${patient.age||"N/A"} yr | Gender: ${patient.gender||"N/A"}
-Weight: ${clinical.weight} kg | Height: ${clinical.height} cm | BMI: ${bmi} (${bc.label}) | Waist: ${clinical.waist||"N/A"} cm
-Activity: ${clinical.activity} | REE formula: ${reeFormula}
-
-LABS:
-${labLines||"  None provided"}
-
-COMORBIDITIES: ${morbidities.join(", ")||"None"}
-MEDICATIONS: ${medications||"None"} | DRUG FLAGS: ${drugFlags.join("; ")||"None"}
-ALLERGIES: ${allergies||"None"}
-
-CASE: ${caseLabel}${caseExtra}
-DIET TYPE: ${dietLabel} — ${macros}
-MEAL STRUCTURE: ${freqLabel} — slots: ${mealList.join(", ")}
-DAILY CALORIE TARGET: ${finalCals} kcal/day
-
-NOTES: ${additionalNotes||"None"}
-
-INSTRUCTIONS: Produce a 7-day meal plan. All food must be culturally suitable for Egyptian/Middle Eastern patients. Use specific portions (grams, ml, pieces). Vary meals daily.
-
-Return ONLY valid JSON (no markdown, no backticks):
-{
-  "summary":{"calories":"${finalCals} kcal/day","protein":"Xg/day (Xg/kg)","carbs":"Xg/day (X%)","fat":"Xg/day (X%)","fiber":"Xg/day","fluid":"XL/day","rationale":"2-3 sentences citing ASPEN/ESPEN specific to this case"},
-  "keyPrinciples":["p1","p2","p3","p4","p5"],
-  "supplements":[{"name":"...","dose":"...","reason":"..."}],
-  "flags":["critical clinical flag"],
-  "days":[
-    {"day":"Monday","meals":{${mealList.map(m=>`"${m}":{"name":"...","items":["item with portion"],"calories":000,"notes":"tip"}`).join(",")}},"dailyTotal":0000}
-  ],
-  "lifestyleAdvice":["a1","a2","a3"],
-  "followUp":"interval and monitoring parameters"
-}
-Include ALL 7 days.`;
-  }
-
-  async function generatePlan(){
-    if(!caseType){setError(t.errorCase);return;}
-    if(!clinical.weight||!clinical.height){setError(t.errorMeasure);return;}
-    if(!dietType){setError(t.errorDiet);return;}
-    setError("");setLoading(true);setPlan(null);
     try{
       const res=await fetch("https://api.anthropic.com/v1/messages",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:5000,messages:[{role:"user",content:buildPrompt()}]})
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:5000,messages:[{role:"user",content:prompt}]})
       });
       const data=await res.json();
-      const text=data.content?.find(b=>b.type==="text")?.text||"";
+      const text=(data.content&&data.content[0]&&data.content[0].text)||"";
       const parsed=JSON.parse(text.replace(/```json|```/g,"").trim());
-      parsed._meta={
-        generatedAt:new Date().toLocaleDateString(lang==="ar"?"ar-EG":"en-GB",{day:"numeric",month:"long",year:"numeric"}),
-        patient:{...patient,bmi,bmiCat:bc.label},
-        caseLabel:caseObj?.[lang]||caseObj?.en||caseType,
-        dietLabel:dietObj?.label[lang]||dietType,
-        dietObj, mealSlots:mealFreqObj?.meals||["breakfast","lunch","snack","dinner"],
-        calories:finalCals, drugFlags, lang, isPed,
-        reeFormula:calSug.formula,
-      };
+      parsed._date=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"long",year:"numeric"});
+      parsed._patient={name,dob,bmi:BMI,gender,caseLabel:caseObj?caseObj[lang]||caseObj.en:"",dietLabel:dietObj?dietObj[lang]||dietObj.en:""};
       setPlan(parsed);setStep(4);
-    }catch(e){setError(t.errorGenerate+" "+e.message);}
+    }catch(e){setErr("Error: "+e.message);}
     finally{setLoading(false);}
   }
 
-  // ── Step bar ──────────────────────────────────────────────────
-  const StepBar=()=>(
-    <div style={{display:"flex",alignItems:"center",marginBottom:24,direction:dir,overflowX:"auto",gap:0}}>
-      {t.steps.map((s,i)=>{
-        const n=i+1,active=step===n,done=step>n;
-        return(
-          <div key={n} style={{display:"flex",alignItems:"center",flex:i<5?1:"none",flexDirection:rtl?"row-reverse":"row",minWidth:0}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,cursor:done?"pointer":"default",flexDirection:rtl?"row-reverse":"row"}}
-              onClick={()=>done&&setStep(n)}>
-              <div style={{width:28,height:28,borderRadius:"50%",flexShrink:0,
-                background:done?C.sage:active?C.teal:C.border,
-                color:C.white,display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:12,fontWeight:700,transition:"background .3s"}}>{done?"✓":n}</div>
-              <span style={{fontSize:10.5,fontWeight:600,whiteSpace:"nowrap",
-                color:active?C.teal:done?C.sage:"#9BB0AD"}}>{s}</span>
-            </div>
-            {i<5&&<div style={{flex:1,height:2,background:done?C.sage:C.border,margin:"0 4px",minWidth:8}}/>}
-          </div>
+  // ── API KEY SCREEN ─────────────────────────────────────────────
+  if(!apiKey){
+    return React.createElement("div",{style:{minHeight:"100vh",background:"linear-gradient(135deg,"+C.tealLt+" 0%,#fff 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:20,fontFamily:"'Segoe UI',sans-serif"}},
+      React.createElement("div",{style:{maxWidth:480,width:"100%",background:C.white,borderRadius:18,boxShadow:"0 8px 40px rgba(27,107,107,.12)",overflow:"hidden"}},
+        React.createElement("div",{style:{background:"linear-gradient(135deg,"+C.teal+","+C.tealMid+")",padding:"28px 32px",textAlign:"center",color:C.white}},
+          React.createElement("div",{style:{fontSize:40}},"🥗"),
+          React.createElement("div",{style:{fontSize:22,fontWeight:800,marginTop:8}},"NutriPlan AI"),
+          React.createElement("div",{style:{fontSize:12,opacity:.8,marginTop:4}},"Dr. Reda Okasha · Clinical Nutrition Platform")
+        ),
+        React.createElement("div",{style:{padding:"28px 32px"}},
+          React.createElement("div",{style:{fontSize:16,fontWeight:700,color:C.ink,marginBottom:10}},"🔑 Enter your Anthropic API Key"),
+          React.createElement("div",{style:{fontSize:13,color:C.slate,marginBottom:20,lineHeight:1.6}},
+            "Get your key from ",React.createElement("b",null,"console.anthropic.com")," → API Keys → Create Key. Add $5 billing credit — lasts hundreds of plans."
+          ),
+          React.createElement("div",{style:{display:"flex",gap:8,marginBottom:8}},
+            React.createElement("input",{type:"password",placeholder:"sk-ant-api03-...",value:keyInput,
+              onChange:function(e){setKeyInput(e.target.value);setKeyErr("");},
+              onKeyDown:function(e){if(e.key==="Enter")saveKey();},
+              style:{flex:1,padding:"11px 14px",borderRadius:9,border:"2px solid "+(keyErr?C.red:C.border),fontSize:14,outline:"none",fontFamily:"inherit"},
+              autoFocus:true
+            }),
+            React.createElement("button",{onClick:saveKey,style:{padding:"11px 20px",borderRadius:9,border:"none",background:"linear-gradient(135deg,"+C.teal+","+C.tealMid+")",color:C.white,fontWeight:700,fontSize:14,cursor:"pointer",whiteSpace:"nowrap",fontFamily:"inherit"}},"Save →")
+          ),
+          keyErr&&React.createElement("div",{style:{color:C.red,fontSize:12,marginBottom:8}},"⚠️ "+keyErr),
+          React.createElement("div",{style:{fontSize:11,color:"#9BB0AD",marginTop:6}},"🔒 Saved only in your browser. Never shared.")
+        )
+      )
+    );
+  }
+
+  // ── HEADER ─────────────────────────────────────────────────────
+  const header=React.createElement("div",{style:{background:C.teal,height:56,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px"}},
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:10}},
+      React.createElement("div",{style:{fontSize:22}},"🥗"),
+      React.createElement("div",null,
+        React.createElement("div",{style:{color:C.white,fontWeight:800,fontSize:15}},"NutriPlan AI"),
+        React.createElement("div",{style:{color:"rgba(255,255,255,.7)",fontSize:10}},"Dr. Reda Okasha · ASPEN/ESPEN")
+      )
+    ),
+    React.createElement("div",{style:{display:"flex",gap:8}},
+      React.createElement("button",{onClick:function(){setLang(ar?"en":"ar");},style:{padding:"5px 12px",borderRadius:16,border:"1.5px solid rgba(255,255,255,.5)",background:"rgba(255,255,255,.15)",color:C.white,fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}},ar?"🇬🇧 English":"🇸🇦 عربي"),
+      plan&&React.createElement("button",{onClick:function(){window.print();},style:{padding:"5px 12px",borderRadius:16,border:"1.5px solid rgba(255,255,255,.5)",background:"rgba(255,255,255,.15)",color:C.white,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}},"🖨️ Print"),
+      plan&&React.createElement("button",{onClick:function(){setPlan(null);setStep(1);},style:{padding:"5px 12px",borderRadius:16,border:"1.5px solid rgba(255,255,255,.5)",background:"rgba(255,255,255,.15)",color:C.white,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}},ar?"+ جديد":"+ New"),
+      React.createElement("button",{onClick:function(){try{localStorage.removeItem("nk");}catch(e){}setApiKey("");},style:{padding:"5px 12px",borderRadius:16,border:"1.5px solid rgba(255,255,255,.3)",background:"rgba(255,255,255,.1)",color:"rgba(255,255,255,.7)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}},"🔑 Key")
+    )
+  );
+
+  // ── STEP BAR ───────────────────────────────────────────────────
+  const STEP_LABELS=ar?["المريض","السريري","الحمية","الخطة"]:["Patient","Clinical","Diet Setup","Plan"];
+  const stepBar=React.createElement("div",{style:{display:"flex",alignItems:"center",marginBottom:22,direction:ar?"rtl":"ltr"}},
+    STEP_LABELS.map(function(s,i){
+      const n=i+1,active=step===n,done=step>n;
+      return React.createElement("div",{key:n,style:{display:"flex",alignItems:"center",flex:i<3?1:"none"}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,cursor:done?"pointer":"default"},onClick:function(){if(done)setStep(n);}},
+          React.createElement("div",{style:{width:26,height:26,borderRadius:"50%",background:done?C.sage:active?C.teal:C.border,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,flexShrink:0}},done?"✓":String(n)),
+          React.createElement("span",{style:{fontSize:11,fontWeight:600,color:active?C.teal:done?C.sage:"#9BB0AD",whiteSpace:"nowrap"}},s)
+        ),
+        i<3&&React.createElement("div",{style:{flex:1,height:2,background:done?C.sage:C.border,margin:"0 6px",minWidth:10}})
+      );
+    })
+  );
+
+  // ── STEP 1 ─────────────────────────────────────────────────────
+  const step1=React.createElement("div",{dir:ar?"rtl":"ltr"},
+    React.createElement("div",{style:{fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,borderBottom:"2px solid "+C.tealLt,paddingBottom:8,marginBottom:16}},ar?"👤 بيانات المريض":"👤 Patient Information"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}},
+      React.createElement("div",{style:{gridColumn:"1/-1"}},React.createElement(Inp,{label:ar?"الاسم الكامل *":"FULL NAME *",rtl:ar,value:name,onChange:function(e){setName(e.target.value);}})),
+      React.createElement(Inp,{label:ar?"تاريخ الميلاد":"DATE OF BIRTH",type:"date",rtl:ar,value:dob,onChange:function(e){setDob(e.target.value);}}),
+      React.createElement(Inp,{label:ar?"العمر":"AGE (years)",type:"number",rtl:ar,value:age,onChange:function(e){setAge(e.target.value);}}),
+      React.createElement(Sel,{label:ar?"الجنس":"GENDER",rtl:ar,value:gender,onChange:function(e){setGender(e.target.value);},
+        options:[{value:"Male",label:ar?"ذكر":"Male"},{value:"Female",label:ar?"أنثى":"Female"}]}),
+      React.createElement(Inp,{label:ar?"رقم الملف":"FILE / CONTACT",rtl:ar,value:contact,onChange:function(e){setContact(e.target.value);}})
+    )
+  );
+
+  // ── STEP 2 ─────────────────────────────────────────────────────
+  const step2=React.createElement("div",{dir:ar?"rtl":"ltr"},
+    React.createElement("div",{style:{fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,borderBottom:"2px solid "+C.tealLt,paddingBottom:8,marginBottom:16}},ar?"📏 القياسات":"📏 Anthropometrics"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}},
+      React.createElement(Inp,{label:ar?"الوزن (كغ) *":"WEIGHT (kg) *",type:"number",step:"0.1",rtl:ar,value:wt,onChange:function(e){setWt(e.target.value);}}),
+      React.createElement(Inp,{label:ar?"الطول (سم) *":"HEIGHT (cm) *",type:"number",step:"0.1",rtl:ar,value:ht,onChange:function(e){setHt(e.target.value);}})
+    ),
+    BMI&&React.createElement("div",{style:{background:C.mist,border:"1.5px solid "+C.border,borderRadius:10,padding:"10px 16px",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"space-between"}},
+      React.createElement("span",{style:{fontSize:12,color:C.slate}},"BMI"),
+      React.createElement("span",{style:{fontWeight:700,fontSize:20,color:C.ink}},BMI),
+      React.createElement("span",{style:{background:parseFloat(BMI)<18.5?C.blue:parseFloat(BMI)<25?C.sage:parseFloat(BMI)<30?C.amber:C.red,color:C.white,padding:"3px 12px",borderRadius:12,fontSize:12,fontWeight:700}},bmiLabel(BMI)),
+      TDEE>0&&React.createElement("span",{style:{fontSize:12,color:C.slate}},"TDEE: "+TDEE+" kcal")
+    ),
+    React.createElement(Sel,{label:ar?"النشاط البدني":"ACTIVITY LEVEL",rtl:ar,value:activity,onChange:function(e){setActivity(e.target.value);},
+      options:[
+        {value:"sedentary",label:ar?"خامل":"Sedentary"},
+        {value:"light",label:ar?"خفيف":"Lightly Active (1–3d/wk)"},
+        {value:"moderate",label:ar?"معتدل":"Moderately Active (3–5d/wk)"},
+        {value:"very_active",label:ar?"عالٍ":"Very Active (6–7d/wk)"},
+        {value:"extra",label:ar?"مكثف جداً":"Extra Active"},
+      ]}),
+    React.createElement("div",{style:{fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,borderBottom:"2px solid "+C.tealLt,paddingBottom:8,marginBottom:16,marginTop:22}},ar?"🧪 المختبر":"🧪 Lab Results"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 14px"}},
+      LABS.map(function(f){
+        return React.createElement("div",{key:f.k,style:{marginBottom:11}},
+          React.createElement("label",{style:{display:"block",fontSize:11,fontWeight:600,color:C.slate,marginBottom:3}},f.en+" ",React.createElement("span",{style:{fontWeight:400,color:"#9BB0AD"}},"("+f.ref+")")),
+          React.createElement("input",{type:"number",step:"0.1",placeholder:"—",value:labs[f.k]||"",
+            onChange:function(e){var nl=Object.assign({},labs);nl[f.k]=e.target.value;setLabs(nl);},
+            style:{width:"100%",boxSizing:"border-box",padding:"7px 10px",borderRadius:8,border:"1.5px solid "+C.border,background:C.white,color:C.ink,fontSize:13,outline:"none",fontFamily:"inherit"}})
         );
-      })}
-    </div>
+      })
+    ),
+    React.createElement("div",{style:{fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,borderBottom:"2px solid "+C.tealLt,paddingBottom:8,marginBottom:14,marginTop:22}},ar?"🩺 التاريخ الطبي":"🩺 Medical History"),
+    React.createElement("label",{style:{fontSize:11,fontWeight:600,color:C.slate,display:"block",marginBottom:8}},ar?"الأمراض الحالية":"MORBIDITIES"),
+    React.createElement("div",{style:{display:"flex",flexWrap:"wrap",marginBottom:14}},
+      MORBIDITIES.map(function(m){
+        var active=morbs.indexOf(m)!==-1;
+        return React.createElement("button",{key:m,onClick:function(){setMorbs(active?morbs.filter(function(x){return x!==m;}):[...morbs,m]);},
+          style:{padding:"5px 12px",borderRadius:20,fontSize:12,fontWeight:600,margin:"3px 4px 3px 0",
+            border:"1.5px solid "+(active?C.teal:C.border),background:active?C.teal:C.white,color:active?C.white:C.slate,cursor:"pointer",fontFamily:"inherit"}},m);
+      })
+    ),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}},
+      React.createElement(Inp,{label:ar?"الأدوية":"MEDICATIONS",rtl:ar,value:meds,onChange:function(e){setMeds(e.target.value);}}),
+      React.createElement(Inp,{label:ar?"الحساسية":"ALLERGIES",rtl:ar,value:allergies,onChange:function(e){setAllergies(e.target.value);}})
+    )
   );
-  // ── Step 1 ────────────────────────────────────────────────────
-  const Step1=()=>(
-    <div dir={dir}>
-      <SecT icon="👤" rtl={rtl}>{t.patientInfo}</SecT>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-        <div style={{gridColumn:"1/-1"}}><Inp label={t.fullName+" *"} rtl={rtl} value={patient.name} onChange={e=>setPatient({...patient,name:e.target.value})}/></div>
-        <Inp label={t.dob+" *"} type="date" rtl={rtl} value={patient.dob} onChange={e=>setPatient({...patient,dob:e.target.value})}/>
-        <Inp label={t.age} type="number" min="0" max="120" rtl={rtl} value={patient.age} onChange={e=>setPatient({...patient,age:e.target.value})}/>
-        <Sel label={t.gender} rtl={rtl} options={t.genders.map((g,i)=>({value:["","Male","Female","Prefer not to say"][i],label:g}))}
-          value={patient.gender} onChange={e=>setPatient({...patient,gender:e.target.value})}/>
-        <Inp label={t.contact} rtl={rtl} value={patient.contact} onChange={e=>setPatient({...patient,contact:e.target.value})}/>
-      </div>
-    </div>
+
+  // ── STEP 3 ─────────────────────────────────────────────────────
+  const step3=React.createElement("div",{dir:ar?"rtl":"ltr"},
+    React.createElement("div",{style:{fontSize:13,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,borderBottom:"2px solid "+C.tealLt,paddingBottom:8,marginBottom:16}},ar?"🎯 إعداد الحمية":"🎯 Diet Configuration"),
+    React.createElement(Sel,{label:ar?"نوع الحالة *":"CASE TYPE *",rtl:ar,value:caseType,
+      onChange:function(e){setCaseType(e.target.value);setErr("");},
+      options:[{value:"",label:ar?"— اختر الحالة —":"— Select Case Type —"},...CASES.map(function(c){return{value:c.v,label:c[lang]||c.en};})]}),
+    React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.slate,marginBottom:10,marginTop:4}},ar?"نوع الحمية *":"DIET TYPE *"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}},
+      DIETS.map(function(d){
+        var sel=dietType===d.v;
+        return React.createElement("div",{key:d.v,onClick:function(){setDietType(d.v);},
+          style:{border:"2px solid "+(sel?d.color:C.border),borderRadius:10,padding:"10px 14px",cursor:"pointer",background:sel?d.color+"12":C.white,transition:"all .15s"}},
+          React.createElement("div",{style:{fontWeight:700,color:d.color,fontSize:13}},d.en),
+          React.createElement("div",{style:{fontSize:10,color:C.slate,marginTop:3}},d.macros)
+        );
+      })
+    ),
+    React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.slate,marginBottom:10}},ar?"عدد الوجبات *":"MEAL FREQUENCY *"),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}},
+      FREQ.map(function(f){
+        var sel=freq===f.v;
+        return React.createElement("div",{key:f.v,onClick:function(){setFreq(f.v);},
+          style:{border:"2px solid "+(sel?C.teal:C.border),borderRadius:10,padding:"12px 14px",cursor:"pointer",background:sel?C.tealLt:C.white}},
+          React.createElement("div",{style:{fontWeight:700,color:sel?C.teal:C.ink,fontSize:13}},f.en),
+          React.createElement("div",{style:{fontSize:11,color:C.slate,marginTop:4}},f.meals.join(" · "))
+        );
+      })
+    ),
+    TDEE>0&&React.createElement("div",{style:{background:C.amberLt,border:"1.5px solid "+C.amber+"40",borderRadius:12,padding:"14px 18px",marginBottom:14}},
+      React.createElement("div",{style:{fontSize:11,fontWeight:600,color:C.slate,textTransform:"uppercase",marginBottom:4}},ar?"السعرات المحسوبة":("Calculated Calories — "+(parseFloat(age)<18?"Schofield (Paediatric)":"Mifflin-St Jeor"))),
+      React.createElement("div",{style:{fontSize:24,fontWeight:800,color:C.amber}},String(sugCals)+" kcal/day"),
+      React.createElement("div",{style:{fontSize:11,color:C.slate,marginTop:3}},"TDEE: "+String(TDEE)+" | Adjustment: "+(ADJ>0?"+":"")+String(ADJ)+" kcal for "+String(caseType)),
+      React.createElement("div",{style:{display:"flex",alignItems:"center",gap:8,marginTop:10}},
+        React.createElement("input",{type:"checkbox",id:"ov",checked:useOverride,onChange:function(e){setUseOverride(e.target.checked);}}),
+        React.createElement("label",{htmlFor:"ov",style:{fontSize:12,fontWeight:600,color:C.slate,cursor:"pointer"}},ar?"تعديل يدوي":"Custom override"),
+        useOverride&&React.createElement("input",{type:"number",placeholder:"kcal/day",value:calOverride,onChange:function(e){setCalOverride(e.target.value);},
+          style:{width:120,padding:"5px 9px",borderRadius:7,border:"1.5px solid "+C.border,fontSize:13,outline:"none",fontFamily:"inherit"}})
+      )
+    ),
+    React.createElement("textarea",{rows:3,placeholder:ar?"ملاحظات إضافية...":"Additional notes (preferences, Ramadan, texture modification, cultural foods...)...",
+      value:notes,onChange:function(e){setNotes(e.target.value);},
+      style:{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:8,border:"1.5px solid "+C.border,fontSize:14,outline:"none",resize:"vertical",fontFamily:"inherit",direction:ar?"rtl":"ltr"}})
   );
 
-  // ── Step 2 ────────────────────────────────────────────────────
-  const Step2=()=>{
-    const [showChart,setShowChart]=useState(false);
-    const chartData=isPed&&bmi?buildGrowthChartData(patient.gender,patient.age,bmi):[];
-    return(
-      <div dir={dir}>
-        <SecT icon="📏" rtl={rtl}>{t.anthropometrics}</SecT>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-          <Inp label={t.weight+" *"} type="number" step="0.1" rtl={rtl} value={clinical.weight} onChange={e=>setClinical({...clinical,weight:e.target.value})}/>
-          <Inp label={t.height+" *"} type="number" step="0.1" rtl={rtl} value={clinical.height} onChange={e=>setClinical({...clinical,height:e.target.value})}/>
-          <div style={{marginBottom:14}}>
-            <label style={{display:"block",fontSize:12,fontWeight:600,color:C.slate,marginBottom:4,textAlign:rtl?"right":"left"}}>{t.bmiLabel}</label>
-            <div style={{padding:"9px 12px",borderRadius:8,border:`1.5px solid ${C.border}`,background:C.mist,display:"flex",alignItems:"center",justifyContent:"space-between",direction:"ltr"}}>
-              <span style={{fontWeight:700,fontSize:16,color:C.ink}}>{bmi||"—"}</span>
-              {bmi&&<Badge text={bc.label} color={bc.color}/>}
-            </div>
-          </div>
-          <Inp label={t.waist} type="number" rtl={rtl} value={clinical.waist} onChange={e=>setClinical({...clinical,waist:e.target.value})}/>
-        </div>
-        <Sel label={t.activity} rtl={rtl} options={t.activityLevels} value={clinical.activity} onChange={e=>setClinical({...clinical,activity:e.target.value})}/>
+  // ── STEP 4: PLAN ───────────────────────────────────────────────
+  const MEAL_COLORS={Breakfast:"#E4F4F4","Morning Snack":"#EAF5F0",Lunch:"#FEF6E7","Afternoon Snack":"#F0EEF9",Dinner:"#FEF3E7","Evening Snack":"#EBF4FB",Snack:"#EAF5F0"};
+  const MEAL_ICONS={Breakfast:"🌅","Morning Snack":"🍎",Lunch:"☀️","Afternoon Snack":"🫐",Dinner:"🌙","Evening Snack":"🫖",Snack:"🍊"};
 
-        {/* Paediatric z-score & growth chart */}
-        {isPed&&bmi&&(
-          <div style={{background:C.blueLt,border:`1.5px solid ${C.blue}30`,borderRadius:12,padding:"14px 18px",marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,flexDirection:rtl?"row-reverse":"row"}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.blue}}>👶 {t.zScore}</div>
-              <button onClick={()=>setShowChart(v=>!v)} style={{fontSize:11,fontWeight:600,background:"none",
-                border:`1px solid ${C.blue}`,borderRadius:6,padding:"3px 10px",color:C.blue,cursor:"pointer"}}>
-                {showChart?(rtl?"إخفاء":"Hide Chart"):(rtl?"عرض مخطط WHO":t.growthChart.split("(")[0].trim())}
-              </button>
-            </div>
-            {pzScore&&(
-              <div style={{display:"flex",gap:16,alignItems:"center",flexWrap:"wrap"}}>
-                <span style={{color:C.slate,fontSize:13}}>Z = <b style={{color:C.ink}}>{pzScore.z}</b></span>
-                <Badge text={pzScore.cat[lang]} color={pzScore.cat.color}/>
-                <span style={{fontSize:11,color:"#9BB0AD"}}>Median {pzScore.median} ± {pzScore.sd} SD</span>
-                <span style={{fontSize:11,color:C.teal,fontWeight:600}}>{t.reeFormula||""} {t.schofieldNote}</span>
-              </div>
-            )}
-            {showChart&&chartData.length>0&&(
-              <div style={{marginTop:14,overflowX:"auto"}}>
-                <div style={{fontSize:11,fontWeight:600,color:C.blue,marginBottom:6}}>{t.growthChart}</div>
-                <LineChart width={580} height={220} data={chartData} margin={{top:5,right:20,bottom:5,left:0}}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E4F4F4"/>
-                  <XAxis dataKey="age" label={{value:"Age (years)",position:"insideBottom",offset:-2,fontSize:10}} tick={{fontSize:10}}/>
-                  <YAxis label={{value:"BMI",angle:-90,position:"insideLeft",fontSize:10}} tick={{fontSize:10}} domain={[10,32]}/>
-                  <Tooltip contentStyle={{fontSize:11}}/>
-                  <Legend wrapperStyle={{fontSize:10}}/>
-                  <Line type="monotone" dataKey="P3" stroke="#93C5FD" strokeWidth={1} dot={false} strokeDasharray="3 3"/>
-                  <Line type="monotone" dataKey="P15" stroke="#60A5FA" strokeWidth={1} dot={false} strokeDasharray="3 3"/>
-                  <Line type="monotone" dataKey="P50" stroke="#2563EB" strokeWidth={2} dot={false}/>
-                  <Line type="monotone" dataKey="P85" stroke="#F97316" strokeWidth={1} dot={false} strokeDasharray="3 3"/>
-                  <Line type="monotone" dataKey="P97" stroke="#DC2626" strokeWidth={1} dot={false} strokeDasharray="3 3"/>
-                  <Line type="monotone" dataKey="Patient" stroke="#1B6B6B" strokeWidth={0} dot={{r:7,fill:"#1B6B6B",strokeWidth:2,stroke:"#fff"}}/>
-                </LineChart>
-                <div style={{display:"flex",gap:12,flexWrap:"wrap",marginTop:4,fontSize:10,color:C.slate}}>
-                  {[["P3","#93C5FD"],["P15","#60A5FA"],["P50 (Median)","#2563EB"],["P85","#F97316"],["P97","#DC2626"],["Patient","#1B6B6B"]].map(([l,c])=>(
-                    <span key={l} style={{display:"flex",alignItems:"center",gap:4}}>
-                      <span style={{width:12,height:3,background:c,display:"inline-block",borderRadius:2}}/>
-                      {l}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-        {/* REE formula notice */}
-        {clinical.weight&&clinical.height&&(
-          <div style={{background:C.sageLt,border:`1px solid ${C.border}`,borderRadius:8,padding:"8px 14px",marginBottom:14,fontSize:11.5,color:C.teal,direction:"ltr"}}>
-            🔬 {isPed?t.schofieldNote:t.mifflinNote}{calSug.value>0?` | REE ≈ ${Math.round(calcREE(clinical.weight,clinical.height,patient.age,patient.gender))} kcal/day · TDEE ≈ ${calSug.tdee} kcal/day`:""}
-          </div>
-        )}
+  var [activeDay,setActiveDay]=useState(0);
 
-        <SecT icon="🧪" rtl={rtl}>{t.labResults}</SecT>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-          {LAB_FIELDS.map(f=>(
-            <div key={f.key} style={{marginBottom:11}}>
-              <label style={{display:"block",fontSize:11,fontWeight:600,color:C.slate,marginBottom:3,textAlign:rtl?"right":"left"}}>
-                {f[lang]||f.en} <span style={{fontWeight:400,color:"#9BB0AD"}}>({f.normal})</span>
-              </label>
-              <input type="number" step="0.01" placeholder="—" value={labs[f.key]||""}
-                onChange={e=>setLabs({...labs,[f.key]:e.target.value})}
-                style={{width:"100%",boxSizing:"border-box",padding:"7px 10px",borderRadius:8,
-                  border:`1.5px solid ${C.border}`,background:C.white,color:C.ink,fontSize:13,outline:"none",direction:"ltr"}}
-                onFocus={e=>e.target.style.borderColor=C.tealMid}
-                onBlur={e=>e.target.style.borderColor=C.border}/>
-            </div>
-          ))}
-        </div>
-
-        <SecT icon="🩺" rtl={rtl}>{t.medHistory}</SecT>
-        <label style={{fontSize:12,fontWeight:600,color:C.slate,display:"block",marginBottom:8,textAlign:rtl?"right":"left"}}>{t.morbidities}</label>
-        <div style={{display:"flex",flexWrap:"wrap",marginBottom:14,justifyContent:rtl?"flex-end":"flex-start"}}>
-          {MORBIDITY_LIST.map(m=><Chip key={m.en} label={m[lang]||m.en} active={morbidities.includes(m.en)} onClick={()=>toggleMorb(m.en)}/>)}
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-          <Inp label={t.medications} rtl={rtl} value={medications} onChange={e=>setMedications(e.target.value)}/>
-          <Inp label={t.allergies} rtl={rtl} value={allergies} onChange={e=>setAllergies(e.target.value)}/>
-        </div>
-        {drugFlags.length>0&&(
-          <div style={{background:C.amberLt,border:`1.5px solid ${C.amber}40`,borderRadius:10,padding:"12px 16px"}}>
-            <div style={{fontSize:12,fontWeight:700,color:"#C87E00",marginBottom:6}}>⚠️ {t.drugFlags}</div>
-            {drugFlags.map((f,i)=><div key={i} style={{fontSize:12.5,color:C.slate,marginBottom:4}}>• {f}</div>)}
-          </div>
-        )}
-      </div>
-    );
-  };
-  // ── Step 3: Diet Config ───────────────────────────────────────
-  const Step3=()=>(
-    <div dir={dir}>
-      <SecT icon="🎯" rtl={rtl}>{t.dietConfig}</SecT>
-      <Sel label={t.caseType+" *"} rtl={rtl}
-        options={[{value:"",label:t.selectCase},...CASE_TYPES.map(c=>({value:c.value,label:c[lang]||c.en}))]}
-        value={caseType} onChange={e=>handleCaseChange(e.target.value)}/>
-      {caseType==="diabetes"&&<Sel label="DIABETES TYPE" rtl={rtl} options={t.diabetesTypes} value={diabetesType} onChange={e=>setDiabetesType(e.target.value)}/>}
-      {caseType==="post_bariatric"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-          <Sel label="SURGERY TYPE" rtl={rtl} options={t.bariatricTypes} value={bariatricType} onChange={e=>setBariatricType(e.target.value)}/>
-          <Inp label="WEEKS POST-OP" type="number" min="0" rtl={rtl} value={bariatricWeeks} onChange={e=>setBariatricWeeks(e.target.value)}/>
-        </div>
-      )}
-      {barPhase&&<div style={{background:C.purpleLt,border:`1.5px solid ${C.purple}30`,borderRadius:10,padding:"12px 16px",marginBottom:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.purple,marginBottom:3}}>🔬 Bariatric Phase</div>
-        <div style={{fontSize:13,color:C.slate}}>{barPhase[lang]||barPhase.en}</div>
-      </div>}
-      {caseType==="cp_autism_adhd"&&(
-        <div style={{marginBottom:14}}>
-          <label style={{fontSize:12,fontWeight:600,color:C.slate,display:"block",marginBottom:8,textAlign:rtl?"right":"left"}}>{t.cpList?.[0]?"CONDITIONS:":""}</label>
-          <div style={{display:"flex",flexWrap:"wrap",justifyContent:rtl?"flex-end":"flex-start"}}>
-            {t.cpList.map((c,i)=>{const en=["Cerebral Palsy","Autism Spectrum Disorder","ADHD","Intellectual Disability","Sensory Processing Disorder"][i];
-              return <Chip key={en} label={c} active={cpConditions.includes(en)} onClick={()=>toggleCP(en)} color={C.purple}/>;
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Diet type table */}
-      <SecT icon="🥗" rtl={rtl}>{t.dietType}</SecT>
-      <button onClick={()=>setShowDietTable(v=>!v)} style={{background:"none",border:`1.5px solid ${C.border}`,borderRadius:8,
-        padding:"6px 14px",fontSize:12,fontWeight:600,color:C.teal,cursor:"pointer",marginBottom:12}}>
-        📊 {showDietTable?(rtl?"إخفاء الجدول":"Hide Table"):(rtl?"جدول المقارنة":t.dietTable)}
-      </button>
-      {showDietTable&&(
-        <div style={{overflowX:"auto",marginBottom:14}}>
-          <table style={{width:"100%",borderCollapse:"separate",borderSpacing:0,fontSize:12,minWidth:680}}>
-            <thead><tr style={{background:C.teal,color:C.white}}>
-              {["Type","Carbs","Protein","Fat","Fibre","Na","Key Foods","Best For"].map((h,i)=>(
-                <th key={i} style={{padding:"8px 10px",textAlign:"left",fontWeight:700,
-                  borderRadius:i===0?"8px 0 0 0":i===7?"0 8px 0 0":0}}>{h}</th>
-              ))}
-            </tr></thead>
-            <tbody>{DIET_TYPES.map((d,i)=>{
-              const isRec=recDiets.includes(d.value), isSel=dietType===d.value;
-              return(
-                <tr key={d.value} onClick={()=>setDietType(d.value)}
-                  style={{cursor:"pointer",background:isSel?d.color+"18":isRec?d.color+"08":i%2===0?"#FAFEFE":C.white,
-                    outline:isSel?`2px solid ${d.color}`:"none",transition:"background .15s"}}>
-                  <td style={{padding:"9px 10px",borderLeft:`3px solid ${isSel?d.color:"transparent"}`}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <span style={{fontSize:15}}>{d.icon}</span>
-                      <div><div style={{fontWeight:700,color:d.color}}>{d.label[lang]}</div>
-                        {isRec&&<Badge text={t.recommended} color={d.color}/>}
-                      </div>
-                    </div>
-                  </td>
-                  <td style={{padding:"9px 10px",fontWeight:600,color:C.slate}}>{d.carbs}</td>
-                  <td style={{padding:"9px 10px",fontWeight:600,color:C.slate}}>{d.protein}</td>
-                  <td style={{padding:"9px 10px",fontWeight:600,color:C.slate}}>{d.fat}</td>
-                  <td style={{padding:"9px 10px",color:C.slate}}>{d.fiber}</td>
-                  <td style={{padding:"9px 10px",color:C.slate,fontSize:11}}>{d.sodium}</td>
-                  <td style={{padding:"9px 10px",color:C.slate,fontSize:11,maxWidth:150}}>{d.keyFoods[lang]}</td>
-                  <td style={{padding:"9px 10px",fontSize:11}}>
-                    {d.bestFor.map(bf=>{const ct=CASE_TYPES.find(c=>c.value===bf);
-                      return ct?<div key={bf} style={{color:C.teal}}>• {ct[lang]||ct.en}</div>:null;
-                    })}
-                  </td>
-                </tr>
-              );
-            })}</tbody>
-          </table>
-        </div>
-      )}
-      <div style={{display:"flex",flexWrap:"wrap",justifyContent:rtl?"flex-end":"flex-start",marginBottom:10}}>
-        {DIET_TYPES.map(d=><Chip key={d.value} label={`${d.icon} ${d.label[lang]}`} color={d.color}
-          active={dietType===d.value} onClick={()=>setDietType(d.value)}/>)}
-      </div>
-      {dietObj&&<div style={{background:dietObj.color+"12",border:`1.5px solid ${dietObj.color}30`,borderRadius:10,
-        padding:"12px 16px",marginBottom:14,direction:dir}}>
-        <div style={{fontWeight:700,color:dietObj.color,marginBottom:4}}>{dietObj.icon} {dietObj.label[lang]}</div>
-        <div style={{fontSize:12.5,color:C.slate}}>{dietObj.desc[lang]}</div>
-        <div style={{fontSize:12,color:C.slate,marginTop:5}}>🌾 {dietObj.carbs} · 💪 {dietObj.protein} · 🫒 {dietObj.fat} · 🥦 {dietObj.fiber}</div>
-      </div>}
-
-      {/* Meal frequency */}
-      <SecT icon="🍽️" rtl={rtl}>{t.mealFreq}</SecT>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-        {MEAL_FREQ_OPTS.map(opt=>(
-          <div key={opt.value} onClick={()=>setMealFreq(opt.value)} style={{
-            border:`2px solid ${mealFreq===opt.value?C.teal:C.border}`,
-            background:mealFreq===opt.value?C.tealLt:C.white,borderRadius:12,
-            padding:"12px 16px",cursor:"pointer",transition:"all .2s"}}>
-            <div style={{fontWeight:700,color:mealFreq===opt.value?C.teal:C.ink,fontSize:13,textAlign:rtl?"right":"left"}}>{opt[lang]||opt.en}</div>
-            <div style={{fontSize:11.5,color:C.slate,marginTop:4,textAlign:rtl?"right":"left"}}>{opt.desc[lang]}</div>
-            <div style={{display:"flex",gap:4,marginTop:8,flexWrap:"wrap",justifyContent:rtl?"flex-end":"flex-start"}}>
-              {opt.meals.map(m=>(
-                <span key={m} style={{fontSize:10,background:mealFreq===opt.value?C.teal+"20":C.mist,
-                  color:mealFreq===opt.value?C.teal:C.slate,padding:"2px 7px",borderRadius:10,fontWeight:600}}>
-                  {t.mealIcons[m]} {t.meals[m]}
-                </span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Calorie target */}
-      <SecT icon="⚡" rtl={rtl}>{t.caloriesTarget}</SecT>
-      {calSug.value>0&&(
-        <div style={{background:C.amberLt,border:`1.5px solid ${C.amber}40`,borderRadius:12,padding:"16px 20px",marginBottom:14}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexDirection:rtl?"row-reverse":"row",marginBottom:8}}>
-            <div>
-              <div style={{fontSize:10,color:C.slate,fontWeight:600,textTransform:"uppercase",letterSpacing:.5,marginBottom:3}}>{calSug.formula}</div>
-              <div style={{fontSize:26,fontWeight:800,color:C.amber,lineHeight:1}}>{calSug.value.toLocaleString()}
-                <span style={{fontSize:13,fontWeight:500,color:C.slate}}> kcal/day</span>
-              </div>
-              <div style={{fontSize:11,color:C.slate,marginTop:3}}>TDEE: {calSug.tdee.toLocaleString()} kcal · {calSug.note[lang]||calSug.note.en}</div>
-            </div>
-            <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:12,fontWeight:600,color:C.slate,flexDirection:rtl?"row-reverse":"row"}}>
-              <input type="checkbox" checked={useOverride} onChange={e=>setUseOverride(e.target.checked)}/>
-              {t.calorieOverride}
-            </label>
-          </div>
-          {useOverride&&<Inp label="Custom kcal/day" type="number" min="800" max="5000" rtl={rtl} value={calorieOverride} onChange={e=>setCalorieOverride(e.target.value)} style={{background:C.white}}/>}
-          {useOverride&&calorieOverride&&<div style={{fontSize:12,color:C.teal,fontWeight:600}}>✓ Using: {parseInt(calorieOverride).toLocaleString()} kcal/day</div>}
-        </div>
-      )}
-
-      {/* Notes */}
-      <SecT icon="📝" rtl={rtl}>{rtl?"ملاحظات إضافية":"Additional Notes"}</SecT>
-      <textarea rows={4} placeholder={t.notesPlaceholder} value={additionalNotes} onChange={e=>setAdditionalNotes(e.target.value)}
-        style={{width:"100%",boxSizing:"border-box",padding:"10px 12px",borderRadius:8,
-          border:`1.5px solid ${C.border}`,background:C.white,color:C.ink,fontSize:14,
-          outline:"none",resize:"vertical",fontFamily:"inherit",direction:dir}}/>
-
-      {/* Case summary */}
-      <div style={{background:C.tealLt,border:`1.5px solid ${C.border}`,borderRadius:12,padding:16,marginTop:14}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.teal,marginBottom:10,textAlign:rtl?"right":"left"}}>📋 {t.caseSummary}</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"5px 16px",fontSize:13,color:C.slate,direction:dir}}>
-          {[[t.patient,patient.name||"—"],["BMI",bmi?`${bmi} — ${bc.label}`:"—"],
-            [t.dietType,dietObj?`${dietObj.icon} ${dietObj.label[lang]}`:"—"],
-            [t.mealFreq,mealFreqObj?mealFreqObj[lang]:"—"],
-            [rtl?"السعرات":t.caloriesTarget,finalCals?`${finalCals.toLocaleString()} kcal`:"—"],
-            [rtl?"الحالة":t.caseType,caseObj?.[lang]||caseObj?.en||"—"],
-          ].map(([k,v])=><div key={k}><b>{k}:</b> {v}</div>)}
-        </div>
-      </div>
-    </div>
-  );
-  // ── Step 4: Plan Output ───────────────────────────────────────
-  const PlanOutput=()=>{
-    if(!plan) return null;
-    const [activeDay,setActiveDay]=useState(0);
-    const m=plan._meta;
-    const lDir=m.lang==="ar"?"rtl":"ltr";
-    const MEAL_COLORS={breakfast:"#E4F4F4",morningSnack:"#EAF5F0",lunch:"#FEF6E7",afternoonSnack:"#F0EEF9",dinner:"#FEF3E7",eveningSnack:"#EBF4FB",snack:"#EAF5F0"};
-    const dayNames=m.lang==="ar"?["الإثنين","الثلاثاء","الأربعاء","الخميس","الجمعة","السبت","الأحد"]:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-    const dObj=m.dietObj||DIET_TYPES[0];
-    const tL=T[m.lang||"en"];
-    return(
-      <div dir={lDir}>
-        <style>{`.no-print{} @media print{.no-print{display:none!important;} body{margin:0;}}`}</style>
-        {/* Letterhead */}
-        <div style={{background:`linear-gradient(135deg,${C.teal},${C.tealMid})`,borderRadius:14,padding:"20px 24px",
-          marginBottom:20,display:"flex",alignItems:"center",justifyContent:"space-between",color:C.white,
-          flexDirection:m.lang==="ar"?"row-reverse":"row"}}>
-          <div style={{textAlign:m.lang==="ar"?"right":"left"}}>
-            <div style={{fontSize:10,opacity:.8,letterSpacing:1.2,textTransform:"uppercase",marginBottom:4}}>
-              {m.lang==="ar"?"عيادة د. ريدا عكاشة":"Dr. Reda Okasha Clinic"}
-            </div>
-            <div style={{fontSize:21,fontWeight:800}}>{m.lang==="ar"?"د. ريدا عكاشة":"Dr. Reda Okasha"}</div>
-            <div style={{fontSize:12,opacity:.85,marginTop:3}}>
-              {m.lang==="ar"?"استشارية طب الأطفال والتغذية السريرية — بالغون وأطفال":"Consultant Paediatrician & Clinical Nutritionist — Adult & Paediatric"}
-            </div>
-          </div>
-          <div style={{textAlign:m.lang==="ar"?"left":"right",fontSize:12}}>
-            <div style={{fontWeight:700,fontSize:14}}>📋 {tL.weeklyPlan}</div>
-            <div style={{marginTop:4,opacity:.85}}>{tL.generated}: {m.generatedAt}</div>
-            <div style={{marginTop:2,opacity:.8}}>{tL.guidelines}</div>
-            <div style={{marginTop:6}}>
-              <span style={{background:dObj.color,padding:"3px 12px",borderRadius:20,fontSize:11,fontWeight:700}}>
-                {dObj.icon} {dObj.label[m.lang]||dObj.label.en}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Patient banner */}
-        <div style={{background:C.sageLt,border:`1.5px solid ${C.border}`,borderRadius:12,
-          padding:"14px 20px",marginBottom:20,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
-          {[{icon:"👤",label:tL.patient,value:m.patient.name||"—"},
-            {icon:"🎂",label:tL.dob,value:m.patient.dob||"—"},
-            {icon:"⚖️",label:"BMI",value:`${m.patient.bmi||"—"} (${m.patient.bmiCat})`},
-            {icon:"🎯",label:m.lang==="ar"?"الحالة":"Case",value:m.caseLabel},
-          ].map(item=>(
-            <div key={item.label} style={{textAlign:"center"}}>
-              <div style={{fontSize:20}}>{item.icon}</div>
-              <div style={{fontSize:10,color:C.slate,fontWeight:600,textTransform:"uppercase",letterSpacing:.4}}>{item.label}</div>
-              <div style={{fontSize:12,fontWeight:700,color:C.ink,marginTop:2}}>{item.value}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Macro targets */}
-        <div style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:12,padding:18,marginBottom:18}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:12}}>{tL.targets}</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,marginBottom:14}}>
-            {[["energy",plan.summary.calories,C.amber],["protein",plan.summary.protein,C.sage],["carbs",plan.summary.carbs,C.purple],
-              ["fat",plan.summary.fat,C.orange],["fiber",plan.summary.fiber,"#27AE60"],["fluid",plan.summary.fluid,C.blue]].map(([k,v,col])=>(
-              <div key={k} style={{background:col+"15",border:`1px solid ${col}30`,borderRadius:10,padding:"10px 12px",textAlign:"center"}}>
-                <div style={{fontSize:18}}>{tL.macroIcons[k]}</div>
-                <div style={{fontSize:10,color:C.slate,fontWeight:600,textTransform:"uppercase"}}>{tL[k]}</div>
-                <div style={{fontSize:12,fontWeight:800,color:col,marginTop:3}}>{v}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{fontSize:12.5,color:C.slate,background:C.mist,borderRadius:8,padding:"10px 14px",
-            borderLeft:m.lang==="ar"?"none":"3px solid "+C.teal,borderRight:m.lang==="ar"?"3px solid "+C.teal:"none"}}>
-            <b style={{color:C.teal}}>{tL.rationale}: </b>{plan.summary.rationale}
-          </div>
-        </div>
-
-        {/* REE formula badge */}
-        {m.reeFormula&&<div style={{background:C.sageLt,border:`1px solid ${C.border}`,borderRadius:8,padding:"7px 14px",
-          marginBottom:14,fontSize:11.5,color:C.teal,direction:"ltr"}}>
-          🔬 {m.isPed?tL.schofieldNote:tL.mifflinNote}
-        </div>}
-
-        {/* Flags */}
-        {plan.flags?.length>0&&<div style={{background:C.amberLt,border:`1.5px solid ${C.amber}40`,borderRadius:12,padding:"12px 16px",marginBottom:14}}>
-          <div style={{fontSize:12,fontWeight:700,color:"#C87E00",marginBottom:8}}>⚠️ {tL.clinicalFlags}</div>
-          {plan.flags.map((f,i)=><div key={i} style={{fontSize:13,color:C.slate,marginBottom:4}}>• {f}</div>)}
-        </div>}
-        {m.drugFlags?.length>0&&<div style={{background:C.orangeLt,border:`1.5px solid ${C.orange}40`,borderRadius:12,padding:"12px 16px",marginBottom:14}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.orange,marginBottom:8}}>💊 {tL.drugFlags}</div>
-          {m.drugFlags.map((f,i)=><div key={i} style={{fontSize:12.5,color:C.slate,marginBottom:4}}>• {f}</div>)}
-        </div>}
-
-        {/* Email & Schedule panels */}
-        <div className="no-print" style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-          <button onClick={()=>{setShowEmailPanel(v=>!v);setShowCalPanel(false);}} style={{
-            padding:"7px 16px",borderRadius:8,border:`1.5px solid ${C.border}`,
-            background:showEmailPanel?C.tealLt:C.white,color:C.teal,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-            {tL.emailPlan}
-          </button>
-          <button onClick={()=>{setShowCalPanel(v=>!v);setShowEmailPanel(false);}} style={{
-            padding:"7px 16px",borderRadius:8,border:`1.5px solid ${C.border}`,
-            background:showCalPanel?C.tealLt:C.white,color:C.teal,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-            {tL.scheduleFollowUp}
-          </button>
-        </div>
-        {showEmailPanel&&(
-          <div style={{background:C.blueLt,border:`1.5px solid ${C.blue}30`,borderRadius:12,padding:"16px 20px",marginBottom:16}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.blue,marginBottom:10}}>📧 {tL.emailPlan}</div>
-            <a href={`mailto:?subject=Nutrition%20Plan%20-%20${encodeURIComponent(m.patient.name||"Patient")}&body=${buildEmailBody(plan,m.patient,m.dietLabel,m.caseLabel)}`}
-              style={{display:"inline-block",padding:"9px 20px",borderRadius:8,background:C.blue,color:C.white,
-                fontSize:13,fontWeight:700,textDecoration:"none"}}>
-              📤 {m.lang==="ar"?"فتح في تطبيق البريد":"Open in Mail App"}
-            </a>
-            <p style={{fontSize:11.5,color:C.slate,marginTop:8,marginBottom:0}}>
-              {m.lang==="ar"?"سيفتح هذا تطبيق البريد الإلكتروني مع ملخص الخطة جاهزاً للإرسال.":"Opens your mail app with a pre-filled plan summary ready to send to the patient."}
-            </p>
-          </div>
-        )}
-        {showCalPanel&&(
-          <div style={{background:C.sageLt,border:`1.5px solid ${C.border}`,borderRadius:12,padding:"16px 20px",marginBottom:16,direction:dir}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.teal,marginBottom:10}}>📅 {tL.scheduleFollowUp}</div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>
-              <Inp label={tL.followUpDate} type="date" rtl={rtl} value={followUpDate} onChange={e=>setFollowUpDate(e.target.value)}/>
-              <Inp label={tL.followUpNote} rtl={rtl} value={followUpNote} onChange={e=>setFollowUpNote(e.target.value)}/>
-            </div>
-            <button onClick={()=>{if(followUpDate) downloadICS(m.patient.name||"Patient",followUpDate,followUpNote);}}
-              disabled={!followUpDate}
-              style={{padding:"9px 20px",borderRadius:8,border:"none",
-                background:followUpDate?C.teal:C.border,color:C.white,fontSize:13,fontWeight:700,cursor:followUpDate?"pointer":"not-allowed"}}>
-              {tL.downloadICS}
-            </button>
-            <p style={{fontSize:11.5,color:C.slate,marginTop:8,marginBottom:0}}>
-              {m.lang==="ar"?"حمّل ملف .ics لإضافة الموعد إلى أي تطبيق تقويم (Apple، Google، Outlook).":"Download a .ics file to add this appointment to any calendar (Apple, Google, Outlook)."}
-            </p>
-          </div>
-        )}
-
-        {/* Day tabs */}
-        <div className="no-print" style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:16}}>
-          {plan.days?.map((d,i)=>(
-            <button key={i} onClick={()=>setActiveDay(i)} style={{padding:"7px 16px",borderRadius:20,fontSize:13,fontWeight:600,
-              border:`1.5px solid ${activeDay===i?C.teal:C.border}`,
-              background:activeDay===i?C.teal:C.white,color:activeDay===i?C.white:C.slate,cursor:"pointer"}}>
-              {dayNames[i]||d.day}
-            </button>
-          ))}
-        </div>
-
-        {/* Meals grid */}
-        {plan.days?.map((day,di)=>(
-          <div key={di} className={di!==activeDay?"no-print":""} style={{marginBottom:24}}>
-            <div style={{fontSize:15,fontWeight:800,color:C.teal,marginBottom:12,
-              display:"flex",alignItems:"center",gap:10,flexDirection:m.lang==="ar"?"row-reverse":"row"}}>
-              <span style={{background:C.teal,color:C.white,borderRadius:20,padding:"3px 16px",fontSize:13}}>{dayNames[di]||day.day}</span>
-              <span style={{fontSize:13,color:C.slate,fontWeight:600}}>{tL.dailyTotal}: ~{day.dailyTotal?.toLocaleString()} {tL.kcal}</span>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {Object.entries(day.meals||{}).map(([mk,meal])=>(
-                <div key={mk} style={{background:MEAL_COLORS[mk]||C.mist,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 14px"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:C.teal,marginBottom:6,
-                    display:"flex",alignItems:"center",justifyContent:"space-between",flexDirection:m.lang==="ar"?"row-reverse":"row"}}>
-                    <span>{(tL.mealIcons||{})[mk]||"🍽️"} {(tL.meals||{})[mk]||mk}</span>
-                    <span style={{background:C.white,padding:"2px 8px",borderRadius:10,fontSize:11,color:C.slate,fontWeight:600}}>{meal.calories} {tL.kcal}</span>
-                  </div>
-                  <div style={{fontSize:13,fontWeight:700,color:C.ink,marginBottom:5,textAlign:m.lang==="ar"?"right":"left"}}>{meal.name}</div>
-                  <ul style={{margin:0,paddingLeft:m.lang==="ar"?0:14,paddingRight:m.lang==="ar"?14:0}}>
-                    {meal.items?.map((item,ii)=><li key={ii} style={{fontSize:12.5,color:C.slate,marginBottom:3,textAlign:m.lang==="ar"?"right":"left"}}>{item}</li>)}
-                  </ul>
-                  {meal.notes&&<div style={{fontSize:11.5,color:C.tealMid,marginTop:5,fontStyle:"italic",textAlign:m.lang==="ar"?"right":"left"}}>💡 {meal.notes}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-
-        {/* Principles + Supplements */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-          <div style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:12,padding:18}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>🔑 {tL.keyPrinciples}</div>
-            {plan.keyPrinciples?.map((p,i)=>(
-              <div key={i} style={{display:"flex",gap:8,marginBottom:8,flexDirection:m.lang==="ar"?"row-reverse":"row"}}>
-                <div style={{width:20,height:20,borderRadius:"50%",background:C.teal,color:C.white,fontSize:11,
-                  fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>{i+1}</div>
-                <div style={{fontSize:12.5,color:C.slate,paddingTop:2,textAlign:m.lang==="ar"?"right":"left"}}>{p}</div>
-              </div>
-            ))}
-          </div>
-          {plan.supplements?.length>0&&(
-            <div style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:12,padding:18}}>
-              <div style={{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>💊 {tL.supplements}</div>
-              {plan.supplements.map((s,i)=>(
-                <div key={i} style={{background:C.sageLt,borderRadius:10,padding:"9px 12px",marginBottom:8}}>
-                  <div style={{fontWeight:700,fontSize:13,color:C.teal,textAlign:m.lang==="ar"?"right":"left"}}>{s.name}</div>
-                  <div style={{fontSize:12,color:C.slate,textAlign:m.lang==="ar"?"right":"left"}}><b>{tL.dose}:</b> {s.dose}</div>
-                  <div style={{fontSize:11.5,color:C.slate,fontStyle:"italic",textAlign:m.lang==="ar"?"right":"left"}}>{s.reason}</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Lifestyle + Follow-up */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
-          <div style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:12,padding:18}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>🏃 {tL.lifestyle}</div>
-            {plan.lifestyleAdvice?.map((a,i)=><div key={i} style={{fontSize:13,color:C.slate,marginBottom:6,textAlign:m.lang==="ar"?"right":"left"}}>✓ {a}</div>)}
-          </div>
-          <div style={{background:C.tealLt,border:`1.5px solid ${C.border}`,borderRadius:12,padding:18}}>
-            <div style={{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}}>📅 {tL.followUp}</div>
-            <div style={{fontSize:13,color:C.slate,textAlign:m.lang==="ar"?"right":"left"}}>{plan.followUp}</div>
-          </div>
-        </div>
-
-        {/* Print footer */}
-        <div style={{textAlign:"center",padding:"14px 0",borderTop:`1.5px solid ${C.border}`,fontSize:11,color:"#9BB0AD"}}>
-          <div style={{fontWeight:700,color:C.slate}}>{m.lang==="ar"?"د. ريدا عكاشة — استشارية طب الأطفال والتغذية السريرية":"Dr. Reda Okasha — Consultant Paediatrician & Clinical Nutritionist"}</div>
-          <div style={{marginTop:3}}>{tL.disclaimer}</div>
-          <div style={{marginTop:2}}>{m.generatedAt} · AlMather Health</div>
-        </div>
-      </div>
-    );
-  };
-  // ── Step 5: Progress & Labs ───────────────────────────────────
-  const ProgressTab=()=>{
-    const metricObj=TRACKABLE_LABS.find(l=>l.key===chartMetric)||TRACKABLE_LABS[0];
-    const chartData=progressRecords.map(r=>({
-      date:r.date, [metricObj.key]:parseFloat(r[metricObj.key])||null
-    })).filter(d=>d[metricObj.key]!=null);
-    return(
-      <div dir={dir}>
-        <SecT icon="📈" rtl={rtl}>{t.progressTab}</SecT>
-
-        {/* Add visit form */}
-        <div style={{background:C.mist,border:`1.5px solid ${C.border}`,borderRadius:12,padding:"16px 20px",marginBottom:20}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.teal,marginBottom:12,textAlign:rtl?"right":"left"}}>{t.addRecord}</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"0 12px"}}>
-            <Inp label={t.visitDate} type="date" rtl={rtl} value={newRecord.date} onChange={e=>setNewRecord({...newRecord,date:e.target.value})}/>
-            <Inp label={t.visitWeight+" (kg)"} type="number" step="0.1" rtl={rtl} value={newRecord.weight} onChange={e=>setNewRecord({...newRecord,weight:e.target.value})}/>
-            <Inp label="HbA1c (%)" type="number" step="0.1" rtl={rtl} value={newRecord.hba1c} onChange={e=>setNewRecord({...newRecord,hba1c:e.target.value})}/>
-            <Inp label="Fasting Glucose (mg/dL)" type="number" rtl={rtl} value={newRecord.fbs} onChange={e=>setNewRecord({...newRecord,fbs:e.target.value})}/>
-            <Inp label="Cholesterol (mg/dL)" type="number" rtl={rtl} value={newRecord.chol} onChange={e=>setNewRecord({...newRecord,chol:e.target.value})}/>
-            <Inp label="Triglycerides (mg/dL)" type="number" rtl={rtl} value={newRecord.tg} onChange={e=>setNewRecord({...newRecord,tg:e.target.value})}/>
-            <Inp label="Vitamin D (ng/mL)" type="number" rtl={rtl} value={newRecord.vitd} onChange={e=>setNewRecord({...newRecord,vitd:e.target.value})}/>
-            <div style={{gridColumn:"span 2"}}>
-              <Inp label={t.visitNotes} rtl={rtl} value={newRecord.notes} onChange={e=>setNewRecord({...newRecord,notes:e.target.value})}/>
-            </div>
-          </div>
-          <button onClick={()=>{
-            if(newRecord.date){
-              setProgressRecords(p=>[...p,{...newRecord,id:Date.now()}]);
-              setNewRecord({date:"",weight:"",hba1c:"",fbs:"",chol:"",tg:"",vitd:"",notes:""});
-            }
-          }} style={{padding:"9px 24px",borderRadius:8,border:"none",background:C.teal,color:C.white,
-            fontWeight:700,fontSize:13,cursor:"pointer"}}>
-            + {rtl?"إضافة الزيارة":"Add Visit"}
-          </button>
-        </div>
-
-        {progressRecords.length===0?(
-          <div style={{textAlign:"center",padding:"40px 20px",color:"#9BB0AD",fontSize:14}}>{t.noRecords}</div>
-        ):(
-          <>
-            {/* Metric chart */}
-            <div style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:12,padding:18,marginBottom:16}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14,flexDirection:rtl?"row-reverse":"row"}}>
-                <div style={{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase"}}>{t.labTracked}</div>
-                <select value={chartMetric} onChange={e=>setChartMetric(e.target.value)}
-                  style={{padding:"5px 10px",borderRadius:7,border:`1.5px solid ${C.border}`,background:C.white,
-                    fontSize:12,color:C.ink,outline:"none"}}>
-                  {TRACKABLE_LABS.map(l=><option key={l.key} value={l.key}>{l[lang]||l.en}</option>)}
-                </select>
-              </div>
-              {chartData.length>=2?(
-                <LineChart width={620} height={200} data={chartData} margin={{top:5,right:20,bottom:5,left:0}}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E4F4F4"/>
-                  <XAxis dataKey="date" tick={{fontSize:10}}/>
-                  <YAxis tick={{fontSize:10}} label={{value:metricObj.unit,angle:-90,position:"insideLeft",fontSize:10}}/>
-                  <Tooltip contentStyle={{fontSize:11}} formatter={(v)=>[`${v} ${metricObj.unit}`,metricObj[lang]||metricObj.en]}/>
-                  <Line type="monotone" dataKey={metricObj.key} stroke={metricObj.color} strokeWidth={2.5}
-                    dot={{r:5,fill:metricObj.color}} activeDot={{r:7}}/>
-                </LineChart>
-              ):(
-                <div style={{textAlign:"center",padding:20,color:"#9BB0AD",fontSize:13}}>
-                  {rtl?"أضف زيارتين على الأقل لعرض الرسم البياني":"Add at least 2 visits to display the trend chart"}
-                </div>
-              )}
-            </div>
-
-            {/* Visit table */}
-            <div style={{overflowX:"auto",marginBottom:16}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12.5,minWidth:700}}>
-                <thead>
-                  <tr style={{background:C.tealLt}}>
-                    {[t.visitDate,"Wt (kg)","HbA1c (%)","FBS","Chol","TG","Vit D",t.visitNotes,"Δ kg"].map((h,i)=>(
-                      <th key={i} style={{padding:"9px 10px",textAlign:rtl?"right":"left",color:C.teal,fontWeight:700}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {progressRecords.map((r,i)=>{
-                    const prev=progressRecords[i-1];
-                    const dw=prev&&r.weight&&prev.weight?(parseFloat(r.weight)-parseFloat(prev.weight)).toFixed(1):null;
-                    return(
-                      <tr key={r.id} style={{borderBottom:`1px solid ${C.border}`,background:i%2===0?C.mist:C.white}}>
-                        <td style={{padding:"9px 10px",fontWeight:600}}>{r.date}</td>
-                        <td style={{padding:"9px 10px",fontWeight:700,color:C.ink}}>{r.weight||"—"}</td>
-                        <td style={{padding:"9px 10px",color:r.hba1c&&parseFloat(r.hba1c)>6.5?C.red:C.ink}}>{r.hba1c||"—"}</td>
-                        <td style={{padding:"9px 10px",color:r.fbs&&parseFloat(r.fbs)>100?C.amber:C.ink}}>{r.fbs||"—"}</td>
-                        <td style={{padding:"9px 10px",color:r.chol&&parseFloat(r.chol)>200?C.red:C.ink}}>{r.chol||"—"}</td>
-                        <td style={{padding:"9px 10px",color:r.tg&&parseFloat(r.tg)>150?C.amber:C.ink}}>{r.tg||"—"}</td>
-                        <td style={{padding:"9px 10px",color:r.vitd&&parseFloat(r.vitd)<30?C.red:C.ink}}>{r.vitd||"—"}</td>
-                        <td style={{padding:"9px 10px",color:C.slate,fontSize:11}}>{r.notes||"—"}</td>
-                        <td style={{padding:"9px 10px",fontWeight:700,color:dw===null?"#9BB0AD":parseFloat(dw)<0?C.sage:C.red,textAlign:"center"}}>
-                          {dw===null?"—":parseFloat(dw)<0?dw:`+${dw}`}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Summary */}
-            {progressRecords.length>=2&&(()=>{
-              const first=progressRecords[0], last=progressRecords[progressRecords.length-1];
-              const wDiff=first.weight&&last.weight?(parseFloat(last.weight)-parseFloat(first.weight)).toFixed(1):null;
-              return(
-                <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
-                  {wDiff&&<div style={{background:parseFloat(wDiff)<0?C.sageLt:C.amberLt,border:`1.5px solid ${parseFloat(wDiff)<0?C.sage:C.amber}40`,
-                    borderRadius:12,padding:"14px 20px",textAlign:"center"}}>
-                    <div style={{fontSize:22,fontWeight:800,color:parseFloat(wDiff)<0?C.sage:C.amber}}>{parseFloat(wDiff)<0?wDiff:`+${wDiff}`} kg</div>
-                    <div style={{fontSize:11,color:C.slate,marginTop:3}}>{t.totalChange} · {progressRecords.length} visits</div>
-                  </div>}
-                  {first.hba1c&&last.hba1c&&<div style={{background:"#FEF3E7",border:`1.5px solid ${C.orange}30`,borderRadius:12,padding:"14px 20px",textAlign:"center"}}>
-                    <div style={{fontSize:18,fontWeight:800,color:C.orange}}>{first.hba1c} → {last.hba1c} %</div>
-                    <div style={{fontSize:11,color:C.slate,marginTop:3}}>HbA1c change</div>
-                  </div>}
-                  {first.chol&&last.chol&&<div style={{background:C.purpleLt,border:`1.5px solid ${C.purple}30`,borderRadius:12,padding:"14px 20px",textAlign:"center"}}>
-                    <div style={{fontSize:18,fontWeight:800,color:C.purple}}>{first.chol} → {last.chol}</div>
-                    <div style={{fontSize:11,color:C.slate,marginTop:3}}>Total Cholesterol (mg/dL)</div>
-                  </div>}
-                </div>
-              );
-            })()}
-          </>
-        )}
-      </div>
-    );
-  };
-
-  // ── Step 6: Template Library ──────────────────────────────────
-  const TemplatesTab=()=>(
-    <div dir={dir}>
-      <SecT icon="📚" rtl={rtl}>{t.templatesTab}</SecT>
-      {/* Save current */}
-      {caseType&&dietType&&(
-        <div style={{background:C.sageLt,border:`1.5px solid ${C.border}`,borderRadius:12,padding:"16px 20px",marginBottom:20}}>
-          <div style={{fontSize:12,fontWeight:700,color:C.teal,marginBottom:10}}>{t.saveTemplate}</div>
-          <div style={{display:"flex",gap:10,alignItems:"flex-end"}}>
-            <div style={{flex:1}}><Inp label={t.templateName} rtl={rtl} value={newTemplateName} onChange={e=>setNewTemplateName(e.target.value)}/></div>
-            <button onClick={saveTemplate} style={{padding:"9px 20px",borderRadius:8,border:"none",
-              background:C.teal,color:C.white,fontWeight:700,fontSize:13,cursor:"pointer",marginBottom:14}}>
-              💾 {rtl?"حفظ":"Save"}
-            </button>
-          </div>
-          {templateSavedMsg&&<div style={{fontSize:13,color:C.sage,fontWeight:600}}>✓ {t.templateSaved}</div>}
-          <div style={{fontSize:11.5,color:C.slate,marginTop:4,textAlign:rtl?"right":"left"}}>
-            {rtl?"سيحفظ الإعدادات الحالية: الحالة، الحمية، وجبات، السعرات، ملاحظات، الأمراض، الأدوية.":"Saves current: case type, diet, meal frequency, calories, notes, morbidities, medications."}
-          </div>
-        </div>
-      )}
-      {/* Library */}
-      {templates.length===0?(
-        <div style={{textAlign:"center",padding:"40px 20px",color:"#9BB0AD",fontSize:14}}>{t.noTemplates}</div>
-      ):(
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
-          {templates.map(tmpl=>{
-            const ct=CASE_TYPES.find(c=>c.value===tmpl.caseType);
-            const dt=DIET_TYPES.find(d=>d.value===tmpl.dietType);
-            return(
-              <div key={tmpl.id} style={{background:C.white,border:`1.5px solid ${C.border}`,borderRadius:14,
-                padding:"16px 18px",boxShadow:"0 2px 10px rgba(27,107,107,.06)"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexDirection:rtl?"row-reverse":"row"}}>
-                  <div style={{fontWeight:700,fontSize:14,color:C.ink}}>{tmpl.name}</div>
-                  <button onClick={()=>setTemplates(prev=>prev.filter(x=>x.id!==tmpl.id))}
-                    style={{background:"none",border:"none",color:"#9BB0AD",cursor:"pointer",fontSize:16,padding:"0 2px"}}>✕</button>
-                </div>
-                {dt&&<div style={{background:dt.color+"15",border:`1px solid ${dt.color}30`,borderRadius:8,padding:"6px 10px",marginBottom:8}}>
-                  <span style={{fontSize:12,fontWeight:700,color:dt.color}}>{dt.icon} {dt.label[lang]}</span>
-                </div>}
-                <div style={{fontSize:12,color:C.slate,marginBottom:4,textAlign:rtl?"right":"left"}}>
-                  {ct?.[lang]||ct?.en||tmpl.caseType}
-                </div>
-                {tmpl.calorieOverride&&<div style={{fontSize:11.5,color:C.amber,fontWeight:600,marginBottom:6}}>⚡ {tmpl.calorieOverride} kcal/day</div>}
-                <div style={{fontSize:10.5,color:"#9BB0AD",marginBottom:10}}>Saved {tmpl.savedAt}</div>
-                <button onClick={()=>loadTemplate(tmpl)} style={{width:"100%",padding:"8px",borderRadius:8,
-                  border:`1.5px solid ${C.teal}`,background:C.tealLt,color:C.teal,
-                  fontWeight:700,fontSize:12,cursor:"pointer"}}>
-                  📥 {t.loadTemplate}
-                </button>
-              </div>
+  const step4=plan?React.createElement("div",null,
+    // Letterhead
+    React.createElement("div",{style:{background:"linear-gradient(135deg,"+C.teal+","+C.tealMid+")",borderRadius:14,padding:"18px 24px",marginBottom:18,display:"flex",justifyContent:"space-between",alignItems:"center",color:C.white}},
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:10,opacity:.8,letterSpacing:1,textTransform:"uppercase",marginBottom:3}},"Dr. Reda Okasha Clinic"),
+        React.createElement("div",{style:{fontSize:20,fontWeight:800}},ar?"د. ريدا عكاشة":"Dr. Reda Okasha"),
+        React.createElement("div",{style:{fontSize:12,opacity:.85,marginTop:3}},ar?"استشارية طب الأطفال والتغذية السريرية":"Consultant Paediatrician & Clinical Nutritionist")
+      ),
+      React.createElement("div",{style:{textAlign:"right",fontSize:12}},
+        React.createElement("div",{style:{fontWeight:700,fontSize:14}},"📋 "+(ar?"خطة التغذية الأسبوعية":"WEEKLY NUTRITION PLAN")),
+        React.createElement("div",{style:{marginTop:4,opacity:.85}},(ar?"التاريخ: ":"Generated: ")+plan._date),
+        React.createElement("div",{style:{marginTop:2,opacity:.75}},"ASPEN · ESPEN Guidelines"),
+        dietObj&&React.createElement("div",{style:{marginTop:6,background:dietObj.color,padding:"3px 12px",borderRadius:20,fontSize:11,fontWeight:700,display:"inline-block"}},dietObj.en)
+      )
+    ),
+    // Patient banner
+    React.createElement("div",{style:{background:C.sageLt,border:"1.5px solid "+C.border,borderRadius:12,padding:"12px 20px",marginBottom:16,display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}},
+      [{icon:"👤",label:ar?"المريض":"Patient",val:plan._patient.name||"—"},
+       {icon:"🎂",label:"DOB",val:plan._patient.dob||"—"},
+       {icon:"⚖️",label:"BMI",val:plan._patient.bmi||"—"},
+       {icon:"🎯",label:ar?"الحالة":"Case",val:plan._patient.caseLabel||"—"},
+      ].map(function(item,i){
+        return React.createElement("div",{key:i,style:{textAlign:"center"}},
+          React.createElement("div",{style:{fontSize:18}},item.icon),
+          React.createElement("div",{style:{fontSize:10,color:C.slate,fontWeight:600,textTransform:"uppercase"}},item.label),
+          React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.ink,marginTop:2}},item.val)
+        );
+      })
+    ),
+    // Macros
+    React.createElement("div",{style:{background:C.white,border:"1.5px solid "+C.border,borderRadius:12,padding:16,marginBottom:16}},
+      React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:12}},ar?"الأهداف الغذائية اليومية":"Daily Nutritional Targets"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:12}},
+        [["⚡",ar?"الطاقة":"Energy",plan.summary&&plan.summary.calories,C.amber],
+         ["💪",ar?"البروتين":"Protein",plan.summary&&plan.summary.protein,C.sage],
+         ["🌾",ar?"الكربوهيدرات":"Carbs",plan.summary&&plan.summary.carbs,"#7B6ED6"],
+         ["🫒",ar?"الدهون":"Fat",plan.summary&&plan.summary.fat,C.orange],
+         ["🥦",ar?"الألياف":"Fibre",plan.summary&&plan.summary.fiber,"#27AE60"],
+         ["💧",ar?"السوائل":"Fluid",plan.summary&&plan.summary.fluid,C.blue],
+        ].map(function(item,i){
+          return React.createElement("div",{key:i,style:{background:item[3]+"15",borderRadius:10,padding:"9px 10px",textAlign:"center"}},
+            React.createElement("div",{style:{fontSize:18}},item[0]),
+            React.createElement("div",{style:{fontSize:10,color:C.slate,fontWeight:600,textTransform:"uppercase"}},item[1]),
+            React.createElement("div",{style:{fontSize:12,fontWeight:800,color:item[3],marginTop:2}},String(item[2]||"—"))
+          );
+        })
+      ),
+      React.createElement("div",{style:{fontSize:12,color:C.slate,background:C.mist,borderRadius:8,padding:"9px 12px",borderLeft:"3px solid "+C.teal}},
+        React.createElement("b",{style:{color:C.teal}},ar?"المبرر السريري: ":"Rationale: "),
+        String(plan.summary&&plan.summary.rationale||"")
+      )
+    ),
+    // Flags
+    plan.flags&&plan.flags.length>0&&React.createElement("div",{style:{background:C.amberLt,border:"1.5px solid "+C.amber+"40",borderRadius:12,padding:"12px 16px",marginBottom:14}},
+      React.createElement("div",{style:{fontSize:12,fontWeight:700,color:"#C87E00",marginBottom:6}},"⚠️ "+(ar?"تنبيهات سريرية":"Clinical Flags")),
+      plan.flags.map(function(f,i){return React.createElement("div",{key:i,style:{fontSize:12.5,color:C.slate,marginBottom:3}},"• "+String(f));})
+    ),
+    // Day tabs
+    React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}},
+      (plan.days||[]).map(function(d,i){
+        return React.createElement("button",{key:i,onClick:function(){setActiveDay(i);},
+          style:{padding:"6px 14px",borderRadius:20,fontSize:12,fontWeight:600,
+            border:"1.5px solid "+(activeDay===i?C.teal:C.border),
+            background:activeDay===i?C.teal:C.white,color:activeDay===i?C.white:C.slate,cursor:"pointer",fontFamily:"inherit"}},
+          String(d.day||"Day "+(i+1))
+        );
+      })
+    ),
+    // Meal grid for active day
+    (plan.days||[]).map(function(day,di){
+      if(di!==activeDay) return null;
+      return React.createElement("div",{key:di},
+        React.createElement("div",{style:{fontSize:14,fontWeight:800,color:C.teal,marginBottom:10,display:"flex",alignItems:"center",gap:10}},
+          React.createElement("span",{style:{background:C.teal,color:C.white,borderRadius:20,padding:"2px 14px",fontSize:12}},String(day.day||"")),
+          React.createElement("span",{style:{fontSize:12,color:C.slate}},ar?"إجمالي: ":"Total: ","~"+String(day.total||0)+" kcal")
+        ),
+        React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}},
+          Object.keys(day.meals||{}).map(function(mk){
+            var meal=day.meals[mk];
+            return React.createElement("div",{key:mk,style:{background:MEAL_COLORS[mk]||C.mist,border:"1px solid "+C.border,borderRadius:12,padding:"11px 13px"}},
+              React.createElement("div",{style:{fontSize:11,fontWeight:700,color:C.teal,marginBottom:5,display:"flex",justifyContent:"space-between"}},
+                React.createElement("span",null,String(MEAL_ICONS[mk]||"🍽️")+" "+String(mk)),
+                React.createElement("span",{style:{background:C.white,padding:"1px 8px",borderRadius:10,fontSize:10,color:C.slate}},String(meal.calories||0)+" kcal")
+              ),
+              React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.ink,marginBottom:5}},String(meal.name||"")),
+              React.createElement("ul",{style:{margin:0,paddingLeft:14}},
+                (meal.items||[]).map(function(item,ii){return React.createElement("li",{key:ii,style:{fontSize:12,color:C.slate,marginBottom:2}},String(item));})
+              ),
+              meal.notes&&React.createElement("div",{style:{fontSize:11,color:C.tealMid,marginTop:4,fontStyle:"italic"}},"💡 "+String(meal.notes))
             );
-          })}
-        </div>
-      )}
-    </div>
+          })
+        )
+      );
+    }),
+    // Principles + Supplements
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginTop:16,marginBottom:14}},
+      React.createElement("div",{style:{background:C.white,border:"1.5px solid "+C.border,borderRadius:12,padding:16}},
+        React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}},"🔑 "+(ar?"المبادئ الغذائية":"Key Principles")),
+        (plan.keyPrinciples||[]).map(function(p,i){
+          return React.createElement("div",{key:i,style:{display:"flex",gap:8,marginBottom:7}},
+            React.createElement("div",{style:{width:20,height:20,borderRadius:"50%",background:C.teal,color:C.white,fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}},String(i+1)),
+            React.createElement("div",{style:{fontSize:12,color:C.slate,paddingTop:2}},String(p))
+          );
+        })
+      ),
+      React.createElement("div",{style:{background:C.white,border:"1.5px solid "+C.border,borderRadius:12,padding:16}},
+        React.createElement("div",{style:{fontSize:12,fontWeight:700,color:C.teal,textTransform:"uppercase",letterSpacing:.8,marginBottom:10}},"💊 "+(ar?"المكملات":"Supplements")),
+        (plan.supplements||[]).map(function(s,i){
+          return React.createElement("div",{key:i,style:{background:C.sageLt,borderRadius:9,padding:"8px 11px",marginBottom:7}},
+            React.createElement("div",{style:{fontWeight:700,fontSize:12,color:C.teal}},String(s.name||"")),
+            React.createElement("div",{style:{fontSize:11,color:C.slate}},String(s.dose||"")+" — "+String(s.reason||""))
+          );
+        })
+      )
+    ),
+    // Footer
+    React.createElement("div",{style:{textAlign:"center",padding:"12px 0",borderTop:"1.5px solid "+C.border,fontSize:11,color:"#9BB0AD",marginTop:8}},
+      React.createElement("div",{style:{fontWeight:700,color:C.slate}},ar?"د. ريدا عكاشة — استشارية طب الأطفال والتغذية السريرية":"Dr. Reda Okasha — Consultant Paediatrician & Clinical Nutritionist"),
+      React.createElement("div",{style:{marginTop:3}},"Based on ASPEN & ESPEN guidelines · "+String(plan._date))
+    )
+  ):null;
+
+  // ── NAVIGATION ─────────────────────────────────────────────────
+  const nav=step<4&&React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginTop:24,paddingTop:18,borderTop:"1.5px solid "+C.border}},
+    React.createElement(Btn,{label:ar?"→ رجوع":"← Back",onClick:function(){setStep(function(s){return Math.max(1,s-1);});},outline:true}),
+    step<3?React.createElement(Btn,{label:ar?"التالي ←":"Next →",onClick:function(){setStep(function(s){return s+1;});}}):
+    React.createElement("button",{onClick:generate,disabled:loading,
+      style:{padding:"10px 30px",borderRadius:9,border:"none",background:loading?C.border:"linear-gradient(135deg,"+C.sage+",#2E8060)",
+        color:C.white,fontSize:14,fontWeight:700,cursor:loading?"not-allowed":"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:10}},
+      loading&&React.createElement("span",{style:{display:"inline-block",width:16,height:16,border:"2px solid rgba(255,255,255,.4)",borderTop:"2px solid white",borderRadius:"50%",animation:"spin 1s linear infinite"}}),
+      loading?(ar?"جاري الإنشاء...":"Generating…"):(ar?"✨ إنشاء خطة الغذاء":"✨ Generate Diet Plan")
+    )
   );
-  // ── Layout ────────────────────────────────────────────────────
-  return(
-    <div style={{minHeight:"100vh",background:`linear-gradient(160deg,${C.tealLt} 0%,#F0FAF7 40%,#FFF 100%)`,
-      fontFamily:"'Segoe UI',system-ui,-apple-system,sans-serif"}}>
-      {/* Top bar */}
-      <div style={{background:C.teal,padding:"0 20px",display:"flex",alignItems:"center",
-        justifyContent:"space-between",height:60,direction:rtl?"rtl":"ltr"}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,flexDirection:rtl?"row-reverse":"row"}}>
-          <div style={{width:38,height:38,borderRadius:10,background:"rgba(255,255,255,.15)",
-            display:"flex",alignItems:"center",justifyContent:"center",fontSize:20}}>🥗</div>
-          <div style={{textAlign:rtl?"right":"left"}}>
-            <div style={{color:C.white,fontWeight:800,fontSize:16}}>{t.appName}</div>
-            <div style={{color:"rgba(255,255,255,.7)",fontSize:10}}>{t.appSub}</div>
-          </div>
-        </div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexDirection:rtl?"row-reverse":"row"}}>
-          <button onClick={()=>setLang(l=>l==="en"?"ar":"en")} style={{
-            padding:"6px 14px",borderRadius:20,border:"1.5px solid rgba(255,255,255,.5)",
-            background:"rgba(255,255,255,.15)",color:C.white,fontSize:13,fontWeight:700,cursor:"pointer"}}>
-            {t.langBtn}
-          </button>
-          {plan&&[
-            {label:t.printSave,action:()=>window.print()},
-            {label:t.newPlan,action:()=>{setPlan(null);setStep(1);setCaseType("");setDietType("");setShowEmailPanel(false);setShowCalPanel(false);}},
-          ].map(b=>(
-            <button key={b.label} onClick={b.action} style={{padding:"7px 14px",borderRadius:8,
-              border:"1.5px solid rgba(255,255,255,.4)",background:"rgba(255,255,255,.15)",
-              color:C.white,fontSize:12,fontWeight:600,cursor:"pointer"}}>{b.label}</button>
-          ))}
-        </div>
-      </div>
 
-      {/* Main */}
-      <div style={{maxWidth:920,margin:"0 auto",padding:"26px 16px 60px"}}>
-        <div className="no-print"><StepBar/></div>
-        <div style={{background:C.white,borderRadius:16,boxShadow:"0 4px 32px rgba(27,107,107,.08)",
-          border:`1px solid ${C.border}`,padding:"26px 28px"}}>
-
-          {step===1&&<Step1/>}
-          {step===2&&<Step2/>}
-          {step===3&&<Step3/>}
-          {step===4&&plan&&<PlanOutput/>}
-          {step===5&&<ProgressTab/>}
-          {step===6&&<TemplatesTab/>}
-
-          {error&&<div style={{background:C.redLt,border:`1.5px solid ${C.red}30`,borderRadius:8,
-            padding:"10px 14px",fontSize:13,color:C.red,marginTop:12,direction:dir}}>⚠️ {error}</div>}
-
-          {/* Nav buttons */}
-          {step<4&&(
-            <div className="no-print" style={{display:"flex",justifyContent:"space-between",marginTop:26,
-              borderTop:`1.5px solid ${C.border}`,paddingTop:18,direction:rtl?"rtl":"ltr"}}>
-              <button onClick={()=>setStep(s=>Math.max(1,s-1))} disabled={step===1}
-                style={{padding:"10px 22px",borderRadius:9,border:`1.5px solid ${C.border}`,
-                  background:C.white,color:step===1?"#C5D5D2":C.slate,
-                  fontSize:14,fontWeight:600,cursor:step===1?"not-allowed":"pointer"}}>
-                {rtl?"→ رجوع":"← Back"}
-              </button>
-              {step<3?(
-                <button onClick={()=>setStep(s=>s+1)} style={{padding:"10px 26px",borderRadius:9,border:"none",
-                  background:`linear-gradient(135deg,${C.teal},${C.tealMid})`,color:C.white,
-                  fontSize:14,fontWeight:700,cursor:"pointer",boxShadow:"0 3px 12px rgba(27,107,107,.3)"}}>
-                  {rtl?"← التالي":"Next →"}
-                </button>
-              ):(
-                <button onClick={generatePlan} disabled={loading} style={{padding:"10px 30px",borderRadius:9,border:"none",
-                  background:loading?C.border:`linear-gradient(135deg,${C.sage},#2E8060)`,color:C.white,
-                  fontSize:14,fontWeight:700,cursor:loading?"not-allowed":"pointer",
-                  boxShadow:loading?"none":"0 3px 12px rgba(74,155,127,.4)",
-                  display:"flex",alignItems:"center",gap:10}}>
-                  {loading?(<><span style={{display:"inline-block",width:16,height:16,
-                    border:"2px solid rgba(255,255,255,.4)",borderTop:"2px solid white",
-                    borderRadius:"50%",animation:"spin 1s linear infinite"}}/>{t.generating}</>):t.generate}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Plan action bar */}
-          {step===4&&plan&&(
-            <div className="no-print" style={{display:"flex",gap:10,marginTop:22,paddingTop:18,
-              borderTop:`1.5px solid ${C.border}`,flexWrap:"wrap",direction:rtl?"rtl":"ltr"}}>
-              <button onClick={()=>setStep(3)} style={{padding:"8px 18px",borderRadius:8,
-                border:`1.5px solid ${C.border}`,background:C.white,color:C.slate,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                {t.adjustSettings}
-              </button>
-              <button onClick={()=>setStep(5)} style={{padding:"8px 18px",borderRadius:8,
-                border:`1.5px solid ${C.teal}`,background:C.tealLt,color:C.teal,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                {t.toProgress}
-              </button>
-              <button onClick={()=>setStep(6)} style={{padding:"8px 18px",borderRadius:8,
-                border:`1.5px solid ${C.sage}`,background:C.sageLt,color:C.sage,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                {t.toTemplates}
-              </button>
-              <button onClick={generatePlan} disabled={loading} style={{padding:"8px 18px",borderRadius:8,border:"none",
-                background:`linear-gradient(135deg,${C.sage},#2E8060)`,color:C.white,
-                fontSize:12,fontWeight:600,cursor:loading?"not-allowed":"pointer"}}>
-                {loading?t.generating:t.regenerate}
-              </button>
-            </div>
-          )}
-
-          {(step===5||step===6)&&(
-            <div className="no-print" style={{display:"flex",gap:10,marginTop:22,paddingTop:18,borderTop:`1.5px solid ${C.border}`}}>
-              {plan&&<button onClick={()=>setStep(4)} style={{padding:"8px 18px",borderRadius:8,
-                border:`1.5px solid ${C.border}`,background:C.white,color:C.slate,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                ← {rtl?"العودة للخطة":"Back to Plan"}
-              </button>}
-              <button onClick={()=>setStep(step===5?6:5)} style={{padding:"8px 18px",borderRadius:8,
-                border:`1.5px solid ${C.teal}`,background:C.tealLt,color:C.teal,fontSize:12,fontWeight:600,cursor:"pointer"}}>
-                {step===5?t.toTemplates:t.toProgress}
-              </button>
-            </div>
-          )}
-
-          {loading&&<div style={{textAlign:"center",padding:"20px 0",direction:dir}}>
-            <div style={{fontSize:14,color:C.slate}}>{t.analysing}</div>
-          </div>}
-        </div>
-      </div>
-      <style>{`@keyframes spin{to{transform:rotate(360deg);}} @media print{.no-print{display:none!important;} body{margin:0;}}`}</style>
-    </div>
+  return React.createElement("div",{style:{minHeight:"100vh",background:"linear-gradient(160deg,"+C.tealLt+" 0%,#F0FAF7 40%,#fff 100%)",fontFamily:"'Segoe UI',system-ui,sans-serif"}},
+    header,
+    React.createElement("div",{style:{maxWidth:880,margin:"0 auto",padding:"24px 16px 60px"}},
+      stepBar,
+      React.createElement("div",{style:{background:C.white,borderRadius:16,boxShadow:"0 4px 32px rgba(27,107,107,.08)",border:"1px solid "+C.border,padding:"24px 28px"}},
+        step===1&&step1,
+        step===2&&step2,
+        step===3&&step3,
+        step===4&&step4,
+        err&&React.createElement("div",{style:{background:C.redLt,border:"1.5px solid "+C.red+"30",borderRadius:8,padding:"10px 14px",fontSize:13,color:C.red,marginTop:12}},"⚠️ "+err),
+        nav,
+        step===4&&plan&&React.createElement("div",{style:{display:"flex",gap:10,marginTop:16,paddingTop:16,borderTop:"1.5px solid "+C.border}},
+          React.createElement(Btn,{label:ar?"← تعديل":"← Adjust",onClick:function(){setStep(3);},outline:true,small:true}),
+          React.createElement(Btn,{label:ar?"🔄 إعادة إنشاء":"🔄 Regenerate",onClick:generate,small:true})
+        ),
+        loading&&step<4&&React.createElement("div",{style:{textAlign:"center",padding:"16px 0",fontSize:13,color:C.slate}},"🤖 Analysing patient data and crafting personalised plan…")
+      )
+    ),
+    React.createElement("style",null,"@keyframes spin{to{transform:rotate(360deg);}}")
   );
 }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(NutritionPlanner));
+  </script>
+  <script>
+  try {
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  } catch(e) {
+    document.getElementById('root').innerHTML = '<div style="padding:30px;color:red;font-family:monospace;white-space:pre-wrap"><h2>Error</h2>'+e.message+'\n'+e.stack+'</div>';
+  }
   </script>
 </body>
 </html>
